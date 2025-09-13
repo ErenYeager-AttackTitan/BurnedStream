@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>StreamHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f0f0f; color: #fff; }
+    .card-hover { transition: transform 0.3s, box-shadow 0.3s; }
+    .card-hover:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .poster { border-radius: 0.75rem; object-fit: cover; aspect-ratio: 2/3; }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="bg-black bg-opacity-90 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+    <h1 class="text-2xl font-bold text-red-500">StreamHub</h1>
+    <a href="search.html" class="px-4 py-2 bg-red-500 rounded-md hover:bg-red-600">Search</a>
+  </nav>
+
+  <!-- Content -->
+  <div class="px-6 py-6">
+    <h2 class="text-xl font-semibold mb-4">All Movies & Series</h2>
+    <div id="content-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-6"></div>
+  </div>
+
+  <script>
+    async function loadContent() {
+      const [moviesRes, seriesRes] = await Promise.all([
+        fetch("https://crew-auth.vercel.app/api/content"),
+        fetch("https://crew-auth.vercel.app/api/series")
+      ]);
+      const movies = await moviesRes.json();
+      const series = await seriesRes.json();
+      const all = [...movies, ...series];
+
+      const container = document.getElementById("content-list");
+      container.innerHTML = "";
+      all.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "card-hover cursor-pointer";
+        div.innerHTML = `
+          <a href="watch.html?id=${item._id}&type=${item.type}">
+            <img src="${item.posterLow || item.poster}" alt="${item.title}" class="poster w-full h-full">
+            <p class="mt-2 text-sm text-gray-300 truncate">${item.title}</p>
+            <p class="text-xs text-gray-500">${item.year || ""}</p>
+          </a>
+        `;
+        container.appendChild(div);
+      });
+    }
+    loadContent();
+  </script>
+</body>
+</html>
