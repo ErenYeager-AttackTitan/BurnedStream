@@ -2,71 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RyuuApp – Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RyuuApp - Home</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body { background: #0f0f0f; color: white; font-family: 'Inter', sans-serif; }
-    .card { background:#1a1a1a; border-radius:12px; transition:.2s; }
-    .card:hover { transform:scale(1.05); }
-    .poster { border-radius:12px; object-fit:cover; }
+    body { background: #0f0f0f; color: #fff; }
+    .card { background: #1a1a1a; transition: transform .2s; }
+    .card:hover { transform: scale(1.05); }
+    .scroll-x { overflow-x: auto; white-space: nowrap; }
+    .scroll-x .card { display: inline-block; margin-right: 1rem; }
   </style>
 </head>
-<body class="min-h-screen">
-  <header class="p-4 bg-black sticky top-0 z-50 flex justify-between items-center">
-    <h1 class="text-xl font-bold">RyuuApp</h1>
-    <a href="search.html" class="btn btn-danger btn-sm">Search</a>
+<body class="min-h-screen flex flex-col">
+  <header class="p-4 bg-black shadow-lg flex justify-between items-center">
+    <h1 class="text-2xl font-bold">RyuuApp</h1>
+    <a href="search.html" class="btn btn-danger">Search</a>
   </header>
 
-  <main class="container py-4">
-    <h2 class="text-2xl font-bold mb-3">Latest Movies</h2>
-    <div id="movie-list" class="row"></div>
-
-    <h2 class="text-2xl font-bold mt-6 mb-3">Latest Series</h2>
-    <div id="series-list" class="row"></div>
+  <main class="p-4 flex-1">
+    <h2 class="text-xl mb-2">Latest Content</h2>
+    <div id="content" class="scroll-x"></div>
   </main>
 
+  <footer class="text-center text-sm p-3 bg-black">© 2025 RyuuApp</footer>
+
   <script>
-    const API_URL = "https://crew-auth.vercel.app";
+    const API="https://crew-auth.vercel.app";
 
-    async function fetchAPI(endpoint) {
-      try {
-        const res = await fetch(`${API_URL}${endpoint}`);
-        return await res.json();
-      } catch {
-        alert("Error loading data");
-        return [];
-      }
-    }
-
-    function render(containerId, items, type) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = "";
-      items.reverse().forEach(item => {
-        const img = item.poster_low || item.poster || "https://via.placeholder.com/300x450";
-        container.innerHTML += `
-          <div class="col-6 col-md-3 p-2">
-            <a href="watch.html?type=${type}&id=${item._id}" class="card text-white text-decoration-none">
-              <img src="${img}" class="poster w-100" alt="${item.title}" />
-              <div class="p-2">
-                <h6 class="fw-bold">${item.title}</h6>
-                <small class="text-gray-400">${item.year || ""}</small>
-              </div>
-            </a>
-          </div>
-        `;
+    async function loadContent(){
+      const res=await fetch(`${API}/api/content`);
+      const movies=await res.json();
+      const res2=await fetch(`${API}/api/series`);
+      const series=await res2.json();
+      const all=[...movies,...series].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+      const container=document.getElementById("content");
+      container.innerHTML="";
+      all.forEach(item=>{
+        const div=document.createElement("div");
+        div.className="card text-white";
+        div.style.width="12rem";
+        div.innerHTML=`
+          <img src="${item.posterLow||item.poster}" class="card-img-top" alt="${item.title}">
+          <div class="card-body">
+            <h5 class="card-title">${item.title}</h5>
+            <a href="watch.html?type=${item.type}&id=${item._id}" class="btn btn-sm btn-primary w-100">Watch</a>
+          </div>`;
+        container.appendChild(div);
       });
     }
-
-    async function loadHome() {
-      const movies = await fetchAPI("/api/content");
-      render("movie-list", movies, "movie");
-      const series = await fetchAPI("/api/series");
-      render("series-list", series, "series");
-    }
-
-    loadHome();
+    loadContent();
   </script>
 </body>
 </html>
