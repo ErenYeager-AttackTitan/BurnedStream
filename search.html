@@ -3,67 +3,47 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RyuuApp – Search</title>
+  <title>RyuuApp - Search</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body { background:#0f0f0f; color:white; }
-    .card { background:#1a1a1a; border-radius:12px; }
-    .poster { border-radius:12px; object-fit:cover; }
+    body { background:#0f0f0f; color:#fff; }
+    .card { background:#1a1a1a; }
   </style>
 </head>
-<body>
-  <header class="p-4 bg-black sticky top-0 flex items-center justify-between">
-    <h1 class="text-xl font-bold">Search</h1>
-    <a href="index.html" class="btn btn-secondary btn-sm">Home</a>
+<body class="p-4">
+  <header class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Search</h1>
+    <a href="index.html" class="btn btn-secondary">Home</a>
   </header>
 
-  <main class="container py-4">
-    <form id="search-form" class="mb-4 flex">
-      <input id="query" type="text" class="form-control me-2" placeholder="Search movies/series"/>
-      <button class="btn btn-danger">Search</button>
-    </form>
-    <div id="search-results" class="row"></div>
-  </main>
+  <input id="query" class="form-control mb-3" placeholder="Search movies or series..."/>
+  <div id="results" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
 
   <script>
-    const API_URL = "https://crew-auth.vercel.app";
-
-    async function search(query) {
-      try {
-        const res = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        renderResults(data);
-      } catch {
-        alert("Search failed");
-      }
-    }
-
-    function renderResults(items) {
-      const container = document.getElementById("search-results");
-      container.innerHTML = "";
-      items.forEach(item => {
-        const img = item.poster_low || item.poster || "https://via.placeholder.com/300x450";
-        container.innerHTML += `
-          <div class="col-6 col-md-3 p-2">
-            <a href="watch.html?type=${item.type}&id=${item._id}" class="card text-decoration-none text-white">
-              <img src="${img}" class="poster w-100" alt="${item.title}"/>
-              <div class="p-2">
-                <h6 class="fw-bold">${item.title}</h6>
-                <small>${item.year || ""}</small>
-              </div>
-            </a>
-          </div>
-        `;
+    const API="https://crew-auth.vercel.app";
+    document.getElementById("query").addEventListener("input",async(e)=>{
+      const q=e.target.value.toLowerCase();
+      if(!q){document.getElementById("results").innerHTML="";return;}
+      const [m,s]=await Promise.all([
+        fetch(`${API}/api/content`).then(r=>r.json()),
+        fetch(`${API}/api/series`).then(r=>r.json())
+      ]);
+      const all=[...m,...s].filter(i=>i.title.toLowerCase().includes(q));
+      const results=document.getElementById("results");
+      results.innerHTML="";
+      all.forEach(item=>{
+        const div=document.createElement("div");
+        div.className="card";
+        div.innerHTML=`
+          <img src="${item.posterLow||item.poster}" class="card-img-top">
+          <div class="p-2">
+            <h6>${item.title}</h6>
+            <a href="watch.html?type=${item.type}&id=${item._id}" class="btn btn-sm btn-primary w-100">Watch</a>
+          </div>`;
+        results.appendChild(div);
       });
-    }
-
-    document.getElementById("search-form").addEventListener("submit", e => {
-      e.preventDefault();
-      const q = document.getElementById("query").value.trim();
-      if(q) search(q);
     });
   </script>
 </body>
-  </html>
-  
+</html>
