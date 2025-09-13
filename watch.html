@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Watch</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0a0a0a; color: white; }
+    .iframe-wrapper { position: relative; padding-top: 56.25%; border-radius: 1rem; overflow: hidden; }
+    .iframe-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 1rem; padding: 1.5rem; }
+    .ep-btn { background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 0.5rem; margin: 0.25rem; cursor: pointer; transition: all 0.2s; }
+    .ep-btn:hover { background: rgba(255,255,255,0.3); }
+  </style>
+</head>
+<body>
+  <div class="container mx-auto px-4 py-6">
+    <div class="iframe-wrapper mb-6 shadow-lg">
+      <iframe id="player" src="" frameborder="0" allowfullscreen></iframe>
+    </div>
+    <div class="glass">
+      <h2 id="title" class="text-2xl font-bold"></h2>
+      <p id="description" class="text-gray-300 mt-2"></p>
+      <img id="poster" class="w-48 rounded-lg mt-4 shadow" />
+      <div id="episodes" class="mt-4 flex flex-wrap"></div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    const type = params.get("type");
+
+    async function loadItem() {
+      const url = type === "tv"
+        ? "https://crew-auth.vercel.app/api/series"
+        : "https://crew-auth.vercel.app/api/content";
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const item = data.find(i => i._id === id);
+
+      if (!item) return;
+
+      document.getElementById("title").textContent = item.title;
+      document.getElementById("description").textContent = item.description || "";
+      document.getElementById("poster").src = item.posterLow || item.poster;
+
+      if (type === "tv") {
+        const epDiv = document.getElementById("episodes");
+        item.episodes.forEach(ep => {
+          const btn = document.createElement("div");
+          btn.className = "ep-btn";
+          btn.textContent = `Episode ${ep.ep}`;
+          btn.onclick = () => {
+            document.getElementById("player").src = `https://burnedplayer.pages.dev/player?v=${ep.slug}`;
+          };
+          epDiv.appendChild(btn);
+        });
+        if (item.episodes[0]) {
+          document.getElementById("player").src = `https://burnedplayer.pages.dev/player?v=${item.episodes[0].slug}`;
+        }
+      } else {
+        document.getElementById("player").src = `https://burnedplayer.pages.dev/player?v=${item.slug}`;
+      }
+    }
+    loadItem();
+  </script>
+</body>
+</html>
