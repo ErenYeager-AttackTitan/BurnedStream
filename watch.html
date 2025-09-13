@@ -3,67 +3,59 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RyuuApp – Watch</title>
+  <title>RyuuApp - Watch</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body { background:#0f0f0f; color:white; }
-    .iframe-container { position:relative; width:100%; padding-bottom:56.25%; border-radius:12px; overflow:hidden; }
-    .iframe-container iframe { position:absolute; width:100%; height:100%; border:0; }
-    .episode-btn { background:#1a1a1a; color:white; border-radius:6px; padding:6px 12px; margin:4px; cursor:pointer; }
-    .episode-btn:hover { background:#ff1a1a; }
+    body{background:#0f0f0f;color:#fff;}
+    iframe{border:0;width:100%;aspect-ratio:16/9;}
   </style>
 </head>
-<body>
-  <header class="p-4 bg-black sticky top-0 flex items-center justify-between">
-    <h1 class="text-xl font-bold" id="watch-title">Loading...</h1>
-    <a href="index.html" class="btn btn-secondary btn-sm">Home</a>
+<body class="p-4">
+  <header class="flex justify-between items-center mb-4">
+    <h1 class="text-xl font-bold">Watch</h1>
+    <a href="index.html" class="btn btn-secondary">Home</a>
   </header>
 
-  <main class="container py-4">
-    <div class="iframe-container mb-4">
-      <iframe id="watch-iframe" allowfullscreen></iframe>
-    </div>
-    <p id="watch-description" class="mb-3"></p>
-    <div id="episode-list" class="flex flex-wrap"></div>
-  </main>
+  <div id="player"></div>
+  <div class="mt-4">
+    <h2 id="title" class="text-2xl mb-2"></h2>
+    <p id="desc" class="text-sm opacity-80 mb-3"></p>
+    <img id="poster" class="w-32 rounded mb-3"/>
+    <div id="episodes" class="flex flex-wrap gap-2"></div>
+  </div>
 
   <script>
-    const API_URL = "https://crew-auth.vercel.app";
+    const API="https://crew-auth.vercel.app";
+    const params=new URLSearchParams(location.search);
+    const id=params.get("id");
+    const type=params.get("type");
 
-    async function loadWatch() {
-      const params = new URLSearchParams(window.location.search);
-      const type = params.get("type");
-      const id = params.get("id");
-      if(!type || !id) return;
+    async function load(){
+      const url=type==="tv"?`${API}/api/series/${id}`:`${API}/api/content/${id}`;
+      const res=await fetch(url);
+      const item=await res.json();
+      document.getElementById("title").innerText=item.title;
+      document.getElementById("desc").innerText=item.description;
+      document.getElementById("poster").src=item.posterLow||item.poster;
 
-      const res = await fetch(`${API_URL}/api/${type === "movie" ? "content" : "series"}/${id}`);
-      const data = await res.json();
-
-      document.getElementById("watch-title").textContent = data.title;
-      document.getElementById("watch-description").textContent = data.description || "No description available";
-
-      const iframe = document.getElementById("watch-iframe");
-      if(type === "movie") {
-        iframe.src = `https://burnedplayer.pages.dev/player?v=${data.slug}`;
+      if(type==="movie"){
+        document.getElementById("player").innerHTML=`<iframe src="https://burnedplayer.pages.dev/player?v=${item.slug}" allowfullscreen></iframe>`;
       } else {
-        const episodes = data.episodes || [];
-        if(episodes.length) {
-          iframe.src = `https://burnedplayer.pages.dev/player?v=${episodes[0].slug}`;
-          const list = document.getElementById("episode-list");
-          list.innerHTML = "";
-          episodes.forEach(ep => {
-            const btn = document.createElement("button");
-            btn.textContent = `Ep ${ep.ep}`;
-            btn.className = "episode-btn";
-            btn.onclick = () => iframe.src = `https://burnedplayer.pages.dev/player?v=${ep.slug}`;
-            list.appendChild(btn);
-          });
-        }
+        const epDiv=document.getElementById("episodes");
+        epDiv.innerHTML="";
+        item.episodes.forEach(ep=>{
+          const btn=document.createElement("button");
+          btn.className="btn btn-sm btn-outline-light";
+          btn.innerText="Ep "+ep.ep;
+          btn.onclick=()=>{
+            document.getElementById("player").innerHTML=`<iframe src="https://burnedplayer.pages.dev/player?v=${ep.slug}" allowfullscreen></iframe>`;
+          };
+          epDiv.appendChild(btn);
+        });
       }
     }
-
-    loadWatch();
+    load();
   </script>
 </body>
 </html>
