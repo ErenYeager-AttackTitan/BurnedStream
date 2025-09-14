@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinite Scroll Movies</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border-radius: 10px;
+      overflow: hidden;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.6);
+      transition: transform 0.2s;
+    }
+    .card:hover {
+      transform: scale(1.05);
+    }
+
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card h3 {
+      font-size: 14px;
+      padding: 6px;
+      margin: 0;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 20px;
+      font-size: 18px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <h1 style="text-align:center;padding:10px;">Movie & Series List</h1>
+  <div id="content" class="grid"></div>
+  <div id="loader" class="loader">Loading...</div>
+
+  <script>
+    let page = 1;
+    let loading = false;
+    const contentEl = document.getElementById("content");
+    const loaderEl = document.getElementById("loader");
+
+    // fetch function
+    async function fetchData() {
+      if (loading) return;
+      loading = true;
+      loaderEl.style.display = "block";
+
+      try {
+        // Example: fetch 10 items per page from your API
+        const res = await fetch(`/api/content?page=${page}&limit=10`);
+        const data = await res.json();
+
+        if (data.length === 0) {
+          loaderEl.innerText = "No more items";
+          window.removeEventListener("scroll", handleScroll);
+          return;
+        }
+
+        data.forEach(item => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <a href="watch.html?id=${item._id || item.slug}">
+              <img src="${item.poster || 'https://via.placeholder.com/200x300?text=No+Image'}" alt="${item.title}">
+              <h3>${item.title}</h3>
+            </a>
+          `;
+          contentEl.appendChild(card);
+        });
+
+        page++;
+        loading = false;
+        loaderEl.style.display = "none";
+
+      } catch (err) {
+        console.error(err);
+        loaderEl.innerText = "Error loading data";
+      }
+    }
+
+    function handleScroll() {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+        fetchData();
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll);
+
+    // Initial load
+    fetchData();
+  </script>
+</body>
+</html>
