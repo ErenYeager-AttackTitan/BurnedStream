@@ -1,118 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Infinite Scroll Movies</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RyuuApp - Home</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #fff;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 12px;
-      padding: 16px;
-    }
-
+    body { background:#0f0f0f; color:#fff; font-family:'Inter', sans-serif; }
+    header { background:#000; }
     .card {
-      background: #1a1a1a;
-      border-radius: 10px;
-      overflow: hidden;
-      text-align: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.6);
-      transition: transform 0.2s;
+      background:#1a1a1a;
+      border-radius:12px;
+      overflow:hidden;
+      transition:transform .2s ease, box-shadow .2s ease;
     }
     .card:hover {
-      transform: scale(1.05);
+      transform:scale(1.05);
+      box-shadow:0 8px 16px rgba(0,0,0,0.5);
     }
-
     .card img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
+      width:100%;
+      height:220px;
+      object-fit:cover;
     }
-
-    .card h3 {
-      font-size: 14px;
-      padding: 6px;
-      margin: 0;
+    .card-body { padding:12px; }
+    .card-body h6 {
+      font-size:0.9rem;
+      font-weight:600;
+      margin-bottom:6px;
     }
-
-    .loader {
-      text-align: center;
-      padding: 20px;
-      font-size: 18px;
-      color: #aaa;
+    .btn-watch {
+      display:block;
+      width:100%;
+      background:#e50914;
+      text-align:center;
+      padding:6px;
+      border-radius:8px;
+      font-size:0.8rem;
+      font-weight:600;
+      color:#fff;
+      text-decoration:none;
+      transition:background .2s;
     }
+    .btn-watch:hover { background:#f6121d; }
   </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
+  <header class="p-4 flex justify-between items-center shadow-md">
+    <h1 class="text-xl font-bold">🎬 RyuuApp</h1>
+    <a href="search.html" class="px-4 py-2 rounded bg-red-600 hover:bg-red-500">Search</a>
+  </header>
 
-  <h1 style="text-align:center;padding:10px;">Movie & Series List</h1>
-  <div id="content" class="grid"></div>
-  <div id="loader" class="loader">Loading...</div>
+  <main class="p-4 flex-1">
+    <h2 class="text-lg font-semibold mb-3">Latest Content</h2>
+    <div id="content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+    <div id="loader" class="text-center py-4 opacity-70 hidden">Loading...</div>
+  </main>
+
+  <footer class="text-center text-sm p-3 bg-black">© 2025 RyuuApp</footer>
 
   <script>
+    const API = "https://crew-auth.vercel.app";
+    const container = document.getElementById("content");
+    const loader = document.getElementById("loader");
+
     let page = 1;
+    const limit = 12;
     let loading = false;
-    const contentEl = document.getElementById("content");
-    const loaderEl = document.getElementById("loader");
+    let hasMore = true;
 
-    // fetch function
-    async function fetchData() {
-      if (loading) return;
+    async function fetchData(page, limit) {
+      // Fetch movies & series with pagination
+      const [m, s] = await Promise.all([
+        fetch(`${API}/api/content?page=${page}&limit=${limit}`).then(r => r.json()),
+        fetch(`${API}/api/series?page=${page}&limit=${limit}`).then(r => r.json())
+      ]);
+
+      // Sort combined list by createdAt (latest first)
+      const all = [...m, ...s].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return all;
+    }
+
+    async function loadContent() {
+      if (loading || !hasMore) return;
       loading = true;
-      loaderEl.style.display = "block";
+      loader.classList.remove("hidden");
 
-      try {
-        // Example: fetch 10 items per page from your API
-        const res = await fetch(`/api/content?page=${page}&limit=10`);
-        const data = await res.json();
+      const items = await fetchData(page, limit);
 
-        if (data.length === 0) {
-          loaderEl.innerText = "No more items";
-          window.removeEventListener("scroll", handleScroll);
-          return;
-        }
-
-        data.forEach(item => {
-          const card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML = `
-            <a href="watch.html?id=${item._id || item.slug}">
-              <img src="${item.poster || 'https://via.placeholder.com/200x300?text=No+Image'}" alt="${item.title}">
-              <h3>${item.title}</h3>
-            </a>
-          `;
-          contentEl.appendChild(card);
-        });
-
-        page++;
-        loading = false;
-        loaderEl.style.display = "none";
-
-      } catch (err) {
-        console.error(err);
-        loaderEl.innerText = "Error loading data";
+      if (!items.length) {
+        hasMore = false;
+        loader.innerText = "No more content";
+        return;
       }
+
+      items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <img src="${item.posterLow || item.poster}" alt="${item.title}">
+          <div class="card-body">
+            <h6>${item.title}</h6>
+            <a href="watch.html?type=${item.type}&id=${item._id}" class="btn-watch">Watch</a>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      page++;
+      loading = false;
+      loader.classList.add("hidden");
     }
 
-    function handleScroll() {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-        fetchData();
+    // Infinite scroll
+    window.addEventListener("scroll", () => {
+      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+        loadContent();
       }
-    }
-
-    window.addEventListener("scroll", handleScroll);
+    });
 
     // Initial load
-    fetchData();
+    loadContent();
   </script>
 </body>
 </html>
