@@ -86,7 +86,7 @@
       // Player
       if(type==="movie"){
         document.getElementById("player").innerHTML=`
-          <iframe src="https://burnedplayer.pages.dev/player?v=${item.slug}" allowfullscreen></iframe>`;
+          <iframe src="${item.slug}" allowfullscreen></iframe>`;
       } else {
         const epDiv=document.getElementById("episodes");
         epDiv.innerHTML="";
@@ -96,14 +96,14 @@
           btn.innerText="Ep "+ep.ep;
           btn.onclick=()=>{
             document.getElementById("player").innerHTML=`
-              <iframe src="https://burnedplayer.pages.dev/player?v=${ep.slug}" allowfullscreen></iframe>`;
+              <iframe src="${ep.slug}" allowfullscreen></iframe>`;
           };
           epDiv.appendChild(btn);
         });
         // Load first ep by default
         if(item.episodes.length>0){
           document.getElementById("player").innerHTML=`
-            <iframe src="https://burnedplayer.pages.dev/player?v=${item.episodes[0].slug}" allowfullscreen></iframe>`;
+            <iframe src="${item.episodes[0].slug}" allowfullscreen></iframe>`;
         }
       }
     }
