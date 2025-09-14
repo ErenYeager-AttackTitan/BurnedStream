@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Video.js IPTV Player</title>
+  <!-- Video.js CSS -->
+  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #f1f1f1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .player-container {
+      width: 100%;
+      max-width: 900px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      margin-bottom: 1rem;
+    }
+    #channelSelect {
+      width: 100%;
+      max-width: 900px;
+      padding: 0.7rem;
+      border-radius: 8px;
+      border: none;
+      background: #1c1c1c;
+      color: #fff;
+      font-size: 1rem;
+    }
+    #channelSelect option {
+      background: #1c1c1c;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>📺 SonyLiv IPTV Player</h1>
+
+  <div class="player-container">
+    <video
+      id="videoPlayer"
+      class="video-js vjs-big-play-centered vjs-theme-city"
+      controls
+      preload="auto"
+      width="900"
+      height="500"
+      data-setup='{}'>
+      <source src="" type="application/x-mpegURL" />
+    </video>
+  </div>
+
+  <select id="channelSelect"></select>
+
+  <!-- Video.js JS -->
+  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+  <script>
+    const m3uUrl = "https://raw.githubusercontent.com/SArun61/IPTV/refs/heads/main/SonyLiv.m3u";
+    const player = videojs("videoPlayer");
+
+    async function loadM3U() {
+      const res = await fetch(m3uUrl);
+      const text = await res.text();
+
+      const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+      let channels = [];
+      let currentName = "Unknown";
+
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith("#EXTINF")) {
+          const match = lines[i].match(/tvg-name="([^"]+)"/);
+          currentName = match ? match[1] : lines[i].split(",").pop().trim();
+        } else if (!lines[i].startsWith("#")) {
+          channels.push({ name: currentName, url: lines[i] });
+        }
+      }
+
+      const select = document.getElementById("channelSelect");
+      channels.forEach((ch, i) => {
+        let opt = document.createElement("option");
+        opt.value = ch.url;
+        opt.textContent = ch.name || `Channel ${i+1}`;
+        select.appendChild(opt);
+      });
+
+      if (channels.length > 0) {
+        select.selectedIndex = 0;
+        player.src({ src: channels[0].url, type: "application/x-mpegURL" });
+      }
+
+      select.addEventListener("change", () => {
+        player.src({ src: select.value, type: "application/x-mpegURL" });
+        player.play();
+      });
+    }
+
+    loadM3U();
+  </script>
+</body>
+                             </html>
+    
