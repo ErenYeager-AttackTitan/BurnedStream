@@ -86,17 +86,6 @@
     const m3uUrl = "https://raw.githubusercontent.com/SArun61/IPTV/refs/heads/main/SonyLiv.m3u";
     const player = videojs("videoPlayer");
 
-    async function fetchFinalUrl(url) {
-      // Follow redirects manually to get the final .m3u8
-      try {
-        const res = await fetch(url, { redirect: "follow" });
-        return res.url;
-      } catch (e) {
-        console.error("Redirect fetch error:", e);
-        return url;
-      }
-    }
-
     async function loadM3U() {
       const res = await fetch(m3uUrl);
       const text = await res.text();
@@ -123,9 +112,8 @@
         let div = document.createElement("div");
         div.className = "channel";
         div.innerHTML = `<img src="${ch.logo}" alt="${ch.name}"><span>${ch.name}</span>`;
-        div.addEventListener("click", async () => {
-          const finalUrl = await fetchFinalUrl(ch.url);
-          player.src({ src: finalUrl, type: "application/x-mpegURL" });
+        div.addEventListener("click", () => {
+          player.src({ src: ch.url, type: "application/x-mpegURL" });
           player.play();
         });
         list.appendChild(div);
@@ -133,9 +121,7 @@
 
       // Load first channel by default
       if (channels.length > 0) {
-        const first = channels[0];
-        const finalUrl = await fetchFinalUrl(first.url);
-        player.src({ src: finalUrl, type: "application/x-mpegURL" });
+        player.src({ src: channels[0].url, type: "application/x-mpegURL" });
       }
     }
 
@@ -143,4 +129,3 @@
   </script>
 </body>
 </html>
-
