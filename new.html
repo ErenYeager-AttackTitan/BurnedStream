@@ -5,21 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>RyuuApp - Search</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body { background:#0f0f0f; color:#fff; }
-    .card { background:#1a1a1a; }
-    .card img { width:100%; height:220px; object-fit:cover; border-top-left-radius:.5rem; border-top-right-radius:.5rem; }
+    body { background:#0f0f0f; color:#fff; font-family: 'Inter', sans-serif; }
+    header { background:#000; }
+    .search-box {
+      background:#1a1a1a;
+      border-radius: 12px;
+      padding: 10px 15px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .search-box input {
+      background:transparent;
+      border:none;
+      outline:none;
+      flex:1;
+      color:#fff;
+    }
+    .card {
+      background:#1a1a1a;
+      border-radius: 12px;
+      overflow:hidden;
+      transition:transform .2s ease, box-shadow .2s ease;
+    }
+    .card:hover {
+      transform:scale(1.05);
+      box-shadow:0 8px 16px rgba(0,0,0,0.5);
+    }
+    .card img {
+      width:100%;
+      height:220px;
+      object-fit:cover;
+    }
+    .card-body {
+      padding:12px;
+    }
+    .card-body h6 {
+      font-size:0.9rem;
+      font-weight:600;
+      margin-bottom:6px;
+    }
+    .btn-watch {
+      display:block;
+      width:100%;
+      background:#e50914;
+      text-align:center;
+      padding:6px;
+      border-radius:8px;
+      font-size:0.8rem;
+      font-weight:600;
+      color:#fff;
+      text-decoration:none;
+      transition:background .2s;
+    }
+    .btn-watch:hover {
+      background:#f6121d;
+    }
   </style>
 </head>
 <body class="p-4">
-  <header class="flex justify-between items-center mb-4">
-    <h1 class="text-2xl font-bold">Search</h1>
-    <a href="index.html" class="btn btn-secondary">Home</a>
+  <header class="flex justify-between items-center mb-5 p-3 rounded-lg shadow-md">
+    <h1 class="text-xl font-bold">🔍 Ryuu Search</h1>
+    <a href="index.html" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Home</a>
   </header>
 
-  <input id="query" class="form-control mb-3" placeholder="Search movies or series..."/>
-  <div id="results" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+  <div class="search-box mb-5">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input id="query" placeholder="Search movies or series..."/>
+  </div>
+
+  <div id="results" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
 
   <script>
     const API = "https://crew-auth.vercel.app";
@@ -48,12 +106,12 @@
 
         all.forEach(item => {
           const div = document.createElement("div");
-          div.className = "card rounded overflow-hidden shadow";
+          div.className = "card";
           div.innerHTML = `
             <img src="${item.posterLow || item.poster}" alt="${item.title}">
-            <div class="p-2">
-              <h6 class="text-sm font-semibold mb-1">${item.title}</h6>
-              <a href="watch.html?type=${item.type}&id=${item._id}" class="btn btn-sm btn-primary w-100">Watch</a>
+            <div class="card-body">
+              <h6>${item.title}</h6>
+              <a href="watch.html?type=${item.type}&id=${item._id}" class="btn-watch">Watch</a>
             </div>
           `;
           resultsDiv.appendChild(div);
@@ -64,7 +122,7 @@
       }
     }
 
-    // Trigger search on input with debounce
+    // Debounce search
     let timer;
     queryInput.addEventListener("input", e => {
       clearTimeout(timer);
