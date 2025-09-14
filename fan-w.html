@@ -3,13 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Watch Match</title>
+<title>Watch Match - FanCode</title>
+<script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/video.js@8.6.1/dist/video.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/video.js@8.6.1/dist/video-js.min.css" rel="stylesheet" />
 <style>
-  body { background: #0f172a; color: #f8fafc; }
-  .vjs-big-play-centered { background: #2563eb; }
+  body { background: #0f172a; color: #f8fafc; font-family: sans-serif; }
   .btn-toggle { transition: background 0.3s; }
   .btn-toggle:hover { background: #2563eb; color: white; }
 </style>
@@ -20,11 +18,10 @@
   <h1 class="text-2xl font-bold text-blue-400">📺 FanCode Streaming</h1>
 </header>
 
-<!-- Video Player -->
-<video id="videoPlayer" class="video-js vjs-big-play-centered w-full max-w-3xl rounded-lg overflow-hidden shadow-lg" controls autoplay preload="auto"></video>
+<!-- JWPlayer Container -->
+<div id="jwplayer-container" class="w-full max-w-3xl"></div>
 
 <h2 id="matchTitle" class="mt-4 text-center text-lg font-semibold"></h2>
-
 <div id="info" class="mt-2 text-center text-sm text-gray-400"></div>
 
 <!-- Stream Switch Buttons -->
@@ -38,41 +35,46 @@ const API_URL = "https://raw.githubusercontent.com/drmlive/fancode-live-events/r
 const urlParams = new URLSearchParams(window.location.search);
 const matchId = urlParams.get("id");
 
-let player, matchData;
+let jwPlayerInstance;
+let matchData;
 
 async function loadMatch() {
-  const res = await fetch(API_URL);
-  const data = await res.json();
-  matchData = data.matches.find(m => m.match_id == matchId);
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    matchData = data.matches.find(m => m.match_id == matchId);
 
-  if(!matchData) {
-    document.body.innerHTML = "<p class='text-red-500 text-lg'>Match not found!</p>";
-    return;
+    if(!matchData) {
+      document.body.innerHTML = "<p class='text-red-500 text-lg'>Match not found!</p>";
+      return;
+    }
+
+    document.getElementById("matchTitle").innerText = matchData.title;
+    document.getElementById("info").innerHTML = `
+      ${matchData.team_1} 🆚 ${matchData.team_2} | ${matchData.event_name} | Status: <span class="${matchData.status==='LIVE'?'text-red-400':'text-blue-400'} font-semibold">${matchData.status}</span>
+    `;
+
+    jwPlayerInstance = jwplayer("jwplayer-container");
+    jwPlayerInstance.setup({
+      file: matchData.adfree_url || matchData.dai_url,
+      width: "100%",
+      aspectratio: "16:9",
+      autostart: true,
+      controls: true,
+      primary: "html5",
+    });
+  } catch(e) {
+    console.error("Error loading match:", e);
   }
-
-  document.getElementById("matchTitle").innerText = matchData.title;
-  document.getElementById("info").innerHTML = `
-    ${matchData.team_1} 🆚 ${matchData.team_2} | ${matchData.event_name} | Status: <span class="${matchData.status==='LIVE'?'text-red-400':'text-blue-400'} font-semibold">${matchData.status}</span>
-  `;
-
-  player = videojs("videoPlayer");
-  player.src({ src: matchData.adfree_url || matchData.dai_url, type: "application/x-mpegURL" });
-  player.play();
 }
 
-// Switch Stream
+// Switch Streams
 document.getElementById("btnDai").addEventListener("click", () => {
-  if(matchData.dai_url) {
-    player.src({ src: matchData.dai_url, type: "application/x-mpegURL" });
-    player.play();
-  }
+  if(matchData?.dai_url) jwPlayerInstance.load([{ file: matchData.dai_url }]);
 });
 
 document.getElementById("btnAdfree").addEventListener("click", () => {
-  if(matchData.adfree_url) {
-    player.src({ src: matchData.adfree_url, type: "application/x-mpegURL" });
-    player.play();
-  }
+  if(matchData?.adfree_url) jwPlayerInstance.load([{ file: matchData.adfree_url }]);
 });
 
 loadMatch();
