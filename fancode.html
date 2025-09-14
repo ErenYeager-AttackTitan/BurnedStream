@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanCode Live Matches</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+<style>
+  body { background: #0f172a; color: #f8fafc; }
+  .match-card { transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; }
+  .match-card:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  .filter-btn.active { background: #2563eb; color: white; }
+</style>
+</head>
+<body class="font-sans">
+
+<header class="bg-gray-900 p-4 shadow flex justify-between items-center">
+  <h1 class="text-2xl font-bold text-blue-400">🏟️ FanCode Live</h1>
+  <div id="clock" class="text-white text-sm"></div>
+</header>
+
+<main class="p-4 space-y-6">
+
+  <!-- Category Filters -->
+  <div class="flex flex-wrap gap-2 mb-4" id="categoryFilters"></div>
+
+  <!-- LIVE Matches -->
+  <section>
+    <h2 class="text-xl font-semibold mb-3 text-red-500">🔴 LIVE</h2>
+    <div id="live-matches" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+  </section>
+
+  <!-- UPCOMING Matches -->
+  <section>
+    <h2 class="text-xl font-semibold mb-3 text-blue-400">📅 UPCOMING</h2>
+    <div id="upcoming-matches" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+  </section>
+
+</main>
+
+<script>
+const API_URL = "https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json";
+let matchesData = [];
+
+async function loadMatches() {
+  try {
+    const res = await axios.get(API_URL);
+    matchesData = res.data.matches;
+    renderFilters();
+    renderMatches();
+  } catch(e) {
+    console.error("Error fetching matches:", e);
+  }
+}
+
+function renderFilters() {
+  const container = document.getElementById("categoryFilters");
+  const categories = [...new Set(matchesData.map(m => m.event_category))];
+  container.innerHTML = `<button class="filter-btn px-3 py-1 rounded bg-gray-700 text-white" data-cat="ALL">ALL</button>` +
+    categories.map(cat => `<button class="filter-btn px-3 py-1 rounded bg-gray-700 text-white" data-cat="${cat}">${cat}</button>`).join('');
+  container.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderMatches(btn.dataset.cat);
+    });
+  });
+  container.querySelector(".filter-btn").classList.add("active"); // default ALL
+}
+
+function renderMatches(filter = "ALL") {
+  const live = document.getElementById("live-matches");
+  const upcoming = document.getElementById("upcoming-matches");
+  live.innerHTML = '';
+  upcoming.innerHTML = '';
+
+  const filtered = matchesData.filter(m => filter === "ALL" || m.event_category === filter);
+
+  filtered.forEach(match => {
+    const card = document.createElement("div");
+    card.className = "match-card bg-gray-800 rounded-lg shadow overflow-hidden";
+    card.innerHTML = `
+      <img src="${match.src}" alt="${match.match_name}" class="w-full h-32 object-cover">
+      <div class="p-2">
+        <h3 class="text-sm font-semibold truncate">${match.title}</h3>
+        <p class="text-xs text-gray-400">${match.event_category}</p>
+        <p class="text-xs">${match.startTime}</p>
+        <p class="text-xs ${match.status === 'LIVE' ? 'text-red-400' : 'text-blue-400'} font-semibold">${match.status}</p>
+      </div>
+    `;
+    card.onclick = () => window.location.href = `fan-w.html?id=${match.match_id}`;
+    if(match.status === "LIVE") live.appendChild(card);
+    else upcoming.appendChild(card);
+  });
+}
+
+// Live clock
+function startClock() {
+  const clock = document.getElementById("clock");
+  setInterval(() => {
+    const now = new Date();
+    clock.textContent = now.toLocaleTimeString();
+  }, 1000);
+}
+
+loadMatches();
+startClock();
+</script>
+
+</body>
+  </html>
+  
