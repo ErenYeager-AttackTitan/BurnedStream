@@ -32,6 +32,7 @@
 
 <script>
 const API_URL = "https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json";
+const PROXY_URL = "https://mini.allinonereborn.online/sony/stream_proxy.php?url=";
 const urlParams = new URLSearchParams(window.location.search);
 const matchId = urlParams.get("id");
 
@@ -51,12 +52,14 @@ async function loadMatch() {
 
     document.getElementById("matchTitle").innerText = matchData.title;
     document.getElementById("info").innerHTML = `
-      ${matchData.team_1} 🆚 ${matchData.team_2} | ${matchData.event_name} | Status: <span class="${matchData.status==='LIVE'?'text-red-400':'text-blue-400'} font-semibold">${matchData.status}</span>
+      ${matchData.team_1} 🆚 ${matchData.team_2} | ${matchData.event_name} | Status: 
+      <span class="${matchData.status==='LIVE'?'text-red-400':'text-blue-400'} font-semibold">${matchData.status}</span>
     `;
 
+    const initialUrl = matchData.adfree_url || matchData.dai_url;
     jwPlayerInstance = jwplayer("jwplayer-container");
     jwPlayerInstance.setup({
-      file: matchData.adfree_url || matchData.dai_url,
+      file: PROXY_URL + encodeURIComponent(initialUrl),
       width: "100%",
       aspectratio: "16:9",
       autostart: true,
@@ -68,13 +71,17 @@ async function loadMatch() {
   }
 }
 
-// Switch Streams
+// Switch Streams via Proxy
 document.getElementById("btnDai").addEventListener("click", () => {
-  if(matchData?.dai_url) jwPlayerInstance.load([{ file: matchData.dai_url }]);
+  if(matchData?.dai_url) {
+    jwPlayerInstance.load([{ file: PROXY_URL + encodeURIComponent(matchData.dai_url) }]);
+  }
 });
 
 document.getElementById("btnAdfree").addEventListener("click", () => {
-  if(matchData?.adfree_url) jwPlayerInstance.load([{ file: matchData.adfree_url }]);
+  if(matchData?.adfree_url) {
+    jwPlayerInstance.load([{ file: PROXY_URL + encodeURIComponent(matchData.adfree_url) }]);
+  }
 });
 
 loadMatch();
