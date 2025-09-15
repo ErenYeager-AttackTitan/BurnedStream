@@ -7,7 +7,16 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background:#0f0f0f; color:#fff; font-family: 'Inter', sans-serif; }
-    iframe { border:0; width:100%; aspect-ratio:16/9; border-radius:0.75rem; }
+    iframe {
+  border: 0;
+  width: 100%;       /* full width */
+  max-width: 1200px; /* stops it from getting TOO wide */
+  height: 500px;     /* fixed height */
+  border-radius: 0.75rem;
+  display: block;
+  margin: 0 auto;    /* center horizontally */
+    }
+    
     .backdrop {
       position: absolute;
       top:0; left:0; width:100%; height:100%;
