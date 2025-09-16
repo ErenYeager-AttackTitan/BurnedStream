@@ -3,72 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hanime Video Player</title>
-<link href="https://vjs.zencdn.net/8.6.1/video.min.css" rel="stylesheet">
-<script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.0/dist/videojs-contrib-hls.min.js"></script>
+<title>BurnedStream Hanime Player</title>
+<script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
 <style>
-  body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; }
-  #player { width: 100%; flex: 1; }
-  .storyboards { display: flex; overflow-x: auto; padding: 10px; background: #111; }
-  .storyboards img { margin-right: 5px; height: 90px; cursor: pointer; transition: transform 0.2s; }
-  .storyboards img:hover { transform: scale(1.1); }
+  body { margin:0; background:#000; display:flex; flex-direction:column; height:100vh; }
+  #player { width:100%; height:100%; flex:1; }
 </style>
 </head>
 <body>
 
-<video id="player" class="video-js vjs-default-skin" controls preload="auto" playsinline></video>
-<div class="storyboards" id="storyboards"></div>
+<div id="player"></div>
 
 <script>
-async function fetchVideoStreams(slug) {
-  const res = await fetch(`https://hanime.tv/api/v8/video?id=${slug}`);
-  const data = await res.json();
+async function initPlayer() {
+  const slug = location.hash.slice(1); // burnedsream.pages.dev/hanime#akane-wa-tsumare-somerareru-1
+  if (!slug) return alert("No video ID in URL hash!");
+
+  // Fetch m3u8 streams
+  const api = await fetch(`https://hanime.tv/api/v8/video?id=${slug}`);
+  const data = await api.json();
   const streams = data.videos_manifest.servers[0].streams
     .filter(s => s.url)
-    .map(s => ({ src: s.url, type: "application/x-mpegURL", label: `${s.height}p` }));
-  return { streams, videoId: data.hentai_video.id };
-}
+    .map(s => ({
+      file: s.url,
+      label: `${s.height}p`,
+      type: "hls"
+    }));
 
-async function fetchStoryboards(videoId) {
-  const res = await fetch(`https://hanime.tv/rapi/v7/hentai_video_storyboards?hv_id=${videoId}`);
-  const data = await res.json();
-  return data.hentai_video_storyboards[0];
-}
+  // Fetch VTT captions
+  const videoId = data.hentai_video.id;
+  const vttApi = await fetch(`https://hanime.tv/rapi/v7/hentai_video_storyboards?hv_id=${videoId}`);
+  const vttData = await vttApi.json();
+  // Hanime doesn’t return real VTT, this is storyboard placeholder
+  const tracks = [
+    {
+      file: vttData.hentai_video_storyboards[0].url, // Replace with real VTT if available
+      kind: "thumbnails"
+    }
+  ];
 
-async function initPlayer() {
-  const slug = location.hash.slice(1);
-  if (!slug) { alert("No video slug found!"); return; }
-
-  const { streams, videoId } = await fetchVideoStreams(slug);
-  const storyboardData = await fetchStoryboards(videoId);
-
-  // Initialize Video.js
-  const player = videojs('player', {
-    fluid: true,
-    autoplay: false,
+  jwplayer("player").setup({
+    playlist: [{
+      title: data.hentai_video.name,
+      image: data.hentai_video.poster_url,
+      sources: streams,
+      tracks: tracks
+    }],
+    width: "100%",
+    height: "100%",
     controls: true,
-    preload: 'auto',
-    sources: streams
+    autostart: false,
+    captions: { back: true, active: true }
   });
-
-  // Storyboard thumbnails
-  const container = document.getElementById("storyboards");
-  const totalFrames = storyboardData.num_total_frames;
-  const frameWidth = storyboardData.frame_width;
-  const frameHeight = storyboardData.frame_height;
-
-  for (let i = 0; i < totalFrames; i++) {
-    const img = document.createElement("img");
-    img.src = storyboardData.url;
-    img.width = frameWidth;
-    img.height = frameHeight;
-    img.onclick = () => {
-      const duration = player.duration() || 0;
-      player.currentTime((i / totalFrames) * duration);
-    };
-    container.appendChild(img);
-  }
 }
 
 window.addEventListener("hashchange", initPlayer);
