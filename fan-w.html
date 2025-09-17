@@ -40,14 +40,21 @@
 
       const sources = [];
       if (match.adfree_url) {
-  // Extract part after /mumbai/
-  const extracted = match.adfree_url.split("/mumbai/")[1];
+  // Push the original adfree URL as fallback
+  sources.push({ file: match.adfree_url, label: "Adfree" });
 
-  // Construct DAI URL
-  const daiUrl = `https://dai.fancode.com/primary/${extracted}`;
+  // Extract the part after /mumbai/
+  const parts = match.adfree_url.split("/mumbai/");
+  if (parts[1]) {
+    const daiUrl = `https://dai.fancode.com/primary/${parts[1]}`;
 
-  sources.push({ file: daiUrl, label: "Main (DAI)" });
+    // Wrap the DAI URL with your proxy to fix 232011
+    const proxiedDaiUrl = `https://goodproxy.eren-yeager-founding-titan-9.workers.dev/fetch?url=${encodeURIComponent(daiUrl)}`;
+
+    sources.push({ file: proxiedDaiUrl, label: "Main (DAI)" });
+  }
 }
+
 
       if (match.dai_url) {
         sources.push({ file: match.dai_url, label: "Fallback (Ad-Free)" });
