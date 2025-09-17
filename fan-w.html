@@ -1,190 +1,126 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FanCode Live</title>
+<script type="module">
+  const urlParams = new URLSearchParams(window.location.search);
+  const matchId = urlParams.get("id");
 
-  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
-  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+  const apiUrl = "https://crew-auth.vercel.app/fancode";
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  let currentMatch = null;
+  let player = null;
 
-  <style>
-    body { background: #0c0e12; color: #e2e8f0; font-family: Inter, sans-serif; }
-    .video-js { border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-    .vjs-theme-blue .vjs-control-bar {
-      background: rgba(17, 24, 39, 0.8);
-      backdrop-filter: blur(5px);
-    }
-    .vjs-play-control, .vjs-mute-control {
-      color: #93c5fd;
-    }
-    .switch-btn {
-      @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
-    }
-    .switch-btn.active {
-      @apply ring-2 ring-blue-500 transform scale-105;
-    }
-    .url-input-container {
-      @apply flex items-center justify-center p-2 rounded-lg bg-gray-800 border border-gray-700 w-full max-w-lg;
-    }
-    .url-input {
-      @apply bg-transparent text-sm w-full outline-none truncate;
-    }
-    .copy-btn {
-      @apply ml-2 p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors;
-    }
-  </style>
-</head>
-<body class="flex flex-col items-center min-h-screen p-4 md:p-8">
+  let cloudfrontUrl = "";
+  let adfreeUrl = "";
+  let daiUrl = "";
+  let currentVideoUrl = "";
 
-  <h1 id="matchTitle" class="text-3xl font-bold text-blue-400 mb-6 text-center tracking-wide">
-    Loading...
-  </h1>
-
-  <div class="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl">
-    <video id="videoPlayer" class="video-js vjs-theme-blue w-full" controls preload="auto" playsinline></video>
-  </div>
-
-  <div class="mt-8 flex gap-4 flex-wrap justify-center">
-    <button id="cloudfrontBtn" class="switch-btn bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-      Main (CloudFront)
-    </button>
-    <button id="adfreeBtn" class="switch-btn bg-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
-      Fallback (Ad-Free)
-    </button>
-    <button id="daiBtn" class="switch-btn bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
-      Fallback (DAI)
-    </button>
-  </div>
-
-  <div class="mt-8 url-input-container">
-    <input type="text" id="currentUrlInput" class="url-input" readonly placeholder="Current Stream URL">
-    <button id="copyUrlBtn" class="copy-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M8 2a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2H8zM6 4a4 4 0 014-4h4a4 4 0 014 4v2a4 4 0 01-4 4h-4a4 4 0 01-4-4V4zM4 14a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2v-2a2 2 0 00-2-2H4z" />
-      </svg>
-    </button>
-  </div>
-
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const matchId = urlParams.get("id");
-
-    const apiUrl = "https://crew-auth.vercel.app/fancode";
-
-    let currentMatch = null;
-    let player = null;
-
-    let cloudfrontUrl = "";
-    let adfreeUrl = "";
-    let daiUrl = "";
-    let currentVideoUrl = "";
-
-    async function loadMatch() {
-      try {
-        // Fetch the JSON data with a custom User-Agent header
-        const res = await fetch(apiUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-          }
-        });
-        
-        if (!res.ok) {
-          throw new Error(`Failed to fetch data: ${res.status}`);
+  async function loadMatch() {
+    try {
+      // Fetch as text first
+      const res = await fetch(apiUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
         }
-        const data = await res.json();
-
-        currentMatch = data.find(m => m.id == matchId);
-        if (!currentMatch) {
-          document.getElementById("matchTitle").textContent = "Match not found!";
-          return;
-        }
-
-        document.getElementById("matchTitle").textContent = currentMatch.name;
-
-        // Set main and fallbacks
-        cloudfrontUrl = currentMatch.cloudfront_cdn || "";
-        adfreeUrl = currentMatch.adfree_url || "";
-        daiUrl = adfreeUrl ? "https://dai.fancode.com/primary" + new URL(adfreeUrl).pathname : "";
-
-        // Determine the starting URL and disable buttons for missing URLs
-        const startUrl = cloudfrontUrl || adfreeUrl || daiUrl;
-        const startSource = cloudfrontUrl ? "cloudfront" : (adfreeUrl ? "adfree" : "dai");
-
-        if (!cloudfrontUrl) document.getElementById("cloudfrontBtn").disabled = true;
-        if (!adfreeUrl) document.getElementById("adfreeBtn").disabled = true;
-        if (!daiUrl) document.getElementById("daiBtn").disabled = true;
-
-        if (!startUrl) {
-          document.getElementById("matchTitle").textContent = "No stream found for this match.";
-          return;
-        }
-        
-        currentVideoUrl = startUrl;
-
-        // Initialize player with the starting URL
-        player = videojs("videoPlayer", {
-          controls: true,
-          autoplay: true,
-          preload: "auto",
-          fluid: true,
-          sources: [{ src: startUrl, type: "application/x-mpegURL" }]
-        });
-        
-        highlightActiveButton(startSource);
-        updateUrlInput(startUrl);
-
-      } catch (err) {
-        console.error("Error loading match:", err);
-        document.getElementById("matchTitle").textContent = "Error loading match data. Please try again later.";
-      }
-    }
-
-    function highlightActiveButton(source) {
-      const buttons = document.querySelectorAll('.switch-btn');
-      buttons.forEach(btn => btn.classList.remove('active'));
-      const activeBtn = document.getElementById(source + 'Btn');
-      if (activeBtn) {
-        activeBtn.classList.add('active');
-      }
-    }
-
-    function updateUrlInput(url) {
-      const urlInput = document.getElementById('currentUrlInput');
-      urlInput.value = url;
-    }
-
-    function switchSource(url, source) {
-      if (!url || !player) return;
-      currentVideoUrl = url;
-
-      player.src({
-        src: url,
-        type: "application/x-mpegURL"
       });
       
-      player.play();
-      highlightActiveButton(source);
-      updateUrlInput(url);
-    }
-
-    document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl, "cloudfront"));
-    document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl, "adfree"));
-    document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl, "dai"));
-
-    document.getElementById("copyUrlBtn").addEventListener("click", async () => {
+      if (!res.ok) throw new Error(`Failed to fetch data: ${res.status}`);
+      
+      let text = await res.text();
+      
+      // Repair the JSON dynamically
+      let data = [];
       try {
-        await navigator.clipboard.writeText(currentVideoUrl);
-        alert("URL copied to clipboard!");
+        // Using jsonrepair (assuming it's available globally or via ESM)
+        data = JSON.parse(jsonrepair(text));
       } catch (err) {
-        console.error("Failed to copy URL:", err);
-        alert("Failed to copy URL. Please copy it manually.");
+        console.warn("JSON repair failed, trying raw parse...", err);
+        try {
+          data = JSON.parse(text); // fallback attempt
+        } catch {
+          document.getElementById("matchTitle").textContent = "Match data malformed!";
+          return;
+        }
       }
-    });
 
-    loadMatch();
-  </script>
-</body>
-</html>
+      currentMatch = data.find(m => m.id == matchId);
+      if (!currentMatch) {
+        document.getElementById("matchTitle").textContent = "Match not found!";
+        return;
+      }
+
+      document.getElementById("matchTitle").textContent = currentMatch.name;
+
+      // Set main and fallbacks
+      cloudfrontUrl = currentMatch.cloudfront_cdn || "";
+      adfreeUrl = currentMatch.adfree_url || "";
+      daiUrl = adfreeUrl ? "https://dai.fancode.com/primary" + new URL(adfreeUrl).pathname : "";
+
+      // Determine the starting URL and disable buttons for missing URLs
+      const startUrl = cloudfrontUrl || adfreeUrl || daiUrl;
+      const startSource = cloudfrontUrl ? "cloudfront" : (adfreeUrl ? "adfree" : "dai");
+
+      if (!cloudfrontUrl) document.getElementById("cloudfrontBtn").disabled = true;
+      if (!adfreeUrl) document.getElementById("adfreeBtn").disabled = true;
+      if (!daiUrl) document.getElementById("daiBtn").disabled = true;
+
+      if (!startUrl) {
+        document.getElementById("matchTitle").textContent = "No stream found for this match.";
+        return;
+      }
+      
+      currentVideoUrl = startUrl;
+
+      // Initialize player with the starting URL
+      player = videojs("videoPlayer", {
+        controls: true,
+        autoplay: true,
+        preload: "auto",
+        fluid: true,
+        sources: [{ src: startUrl, type: "application/x-mpegURL" }]
+      });
+      
+      highlightActiveButton(startSource);
+      updateUrlInput(startUrl);
+
+    } catch (err) {
+      console.error("Error loading match:", err);
+      document.getElementById("matchTitle").textContent = "Error loading match data. Please try again later.";
+    }
+  }
+
+  function highlightActiveButton(source) {
+    const buttons = document.querySelectorAll('.switch-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(source + 'Btn');
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  function updateUrlInput(url) {
+    const urlInput = document.getElementById('currentUrlInput');
+    urlInput.value = url;
+  }
+
+  function switchSource(url, source) {
+    if (!url || !player) return;
+    currentVideoUrl = url;
+
+    player.src({ src: url, type: "application/x-mpegURL" });
+    player.play();
+    highlightActiveButton(source);
+    updateUrlInput(url);
+  }
+
+  document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl, "cloudfront"));
+  document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl, "adfree"));
+  document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl, "dai"));
+
+  document.getElementById("copyUrlBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(currentVideoUrl);
+      alert("URL copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy URL:", err);
+      alert("Failed to copy URL. Please copy it manually.");
+    }
+  });
+
+  loadMatch();
+</script>
