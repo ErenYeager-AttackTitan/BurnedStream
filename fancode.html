@@ -3,90 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <title>FanCode Live Matches</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: #0f0f0f; color: white; font-family: Arial, sans-serif; }
-    .card { background:#1a1a1a; border-radius:12px; padding:12px; transition:0.3s; }
-    .card:hover { transform:scale(1.05); background:#2a2a2a; }
+    body { background: #0a0f1c; color: white; font-family: Arial, sans-serif; }
+    .card { background:#111c30; border-radius:16px; padding:12px; transition:0.3s; }
+    .card:hover { transform:scale(1.04); background:#1a2947; }
+    .filter-bar { background:#0d1a33; padding:10px; border-radius:10px; }
+    select { background:#1e3a8a; color:white; padding:8px; border-radius:8px; }
   </style>
 </head>
 <body class="p-4">
 
-  <h1 class="text-2xl font-bold mb-4">⚡ FanCode Live Matches</h1>
+  <h1 class="text-2xl font-bold mb-4 text-blue-400">⚡ FanCode Live Matches</h1>
 
   <!-- Filters -->
-  <div class="mb-6 flex gap-4">
-    <select id="categoryFilter" class="p-2 rounded bg-gray-800">
+  <div class="filter-bar flex gap-4 mb-6 overflow-x-auto">
+    <select id="categoryFilter">
       <option value="">All Categories</option>
     </select>
-    <select id="languageFilter" class="p-2 rounded bg-gray-800">
+    <select id="languageFilter">
       <option value="">All Languages</option>
     </select>
   </div>
 
   <!-- Matches -->
-  <div id="matches" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+  <div id="matches" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
 
   <script>
     const apiUrl = "https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json";
 
     async function loadMatches() {
-      const res = await fetch(apiUrl);
-      const data = await res.json();
+      try {
+        const res = await fetch(apiUrl, { cache: "no-cache" });
+        const data = await res.json();
 
-      const matchContainer = document.getElementById("matches");
-      const categoryFilter = document.getElementById("categoryFilter");
-      const languageFilter = document.getElementById("languageFilter");
+        const matchContainer = document.getElementById("matches");
+        const categoryFilter = document.getElementById("categoryFilter");
+        const languageFilter = document.getElementById("languageFilter");
 
-      let categories = new Set();
-      let languages = new Set();
-
-      data.forEach(match => {
-        categories.add(match.category);
-        languages.add(match.language);
-      });
-
-      categories.forEach(c => {
-        let opt = document.createElement("option");
-        opt.value = c; opt.textContent = c;
-        categoryFilter.appendChild(opt);
-      });
-
-      languages.forEach(l => {
-        let opt = document.createElement("option");
-        opt.value = l; opt.textContent = l;
-        languageFilter.appendChild(opt);
-      });
-
-      function renderMatches() {
-        matchContainer.innerHTML = "";
-        let cat = categoryFilter.value;
-        let lang = languageFilter.value;
+        let categories = new Set();
+        let languages = new Set();
 
         data.forEach(match => {
-          if ((cat === "" || match.category === cat) && (lang === "" || match.language === lang)) {
-            let a = document.createElement("a");
-            a.href = `fan-w.html?id=${encodeURIComponent(match.id)}`;
-            a.className = "card block";
-            a.setAttribute("data-category", match.category);
-            a.setAttribute("data-language", match.language);
-
-            a.innerHTML = `
-              <img src="${match.image || 'https://via.placeholder.com/300x200?text=No+Image'}" 
-                   alt="${match.name}" 
-                   class="rounded mb-2 w-full h-40 object-cover">
-              <h2 class="font-bold text-lg">${match.name}</h2>
-              <p class="text-sm text-gray-400">${match.category} • ${match.language}</p>
-            `;
-            matchContainer.appendChild(a);
-          }
+          if (match.category) categories.add(match.category);
+          if (match.language) languages.add(match.language);
         });
+
+        categories.forEach(c => {
+          let opt = document.createElement("option");
+          opt.value = c; opt.textContent = c;
+          categoryFilter.appendChild(opt);
+        });
+
+        languages.forEach(l => {
+          let opt = document.createElement("option");
+          opt.value = l; opt.textContent = l;
+          languageFilter.appendChild(opt);
+        });
+
+        function renderMatches() {
+          matchContainer.innerHTML = "";
+          let cat = categoryFilter.value;
+          let lang = languageFilter.value;
+
+          data.forEach(match => {
+            if ((cat === "" || match.category === cat) && (lang === "" || match.language === lang)) {
+              let a = document.createElement("a");
+              a.href = `fan-w.html?id=${encodeURIComponent(match.id)}`;
+              a.className = "card block shadow-lg";
+              a.setAttribute("data-category", match.category);
+              a.setAttribute("data-language", match.language);
+
+              a.innerHTML = `
+                <img src="${match.image || 'https://via.placeholder.com/400x250/1e3a8a/ffffff?text=No+Image'}" 
+                     alt="${match.name}" 
+                     class="rounded mb-2 w-full h-44 object-cover">
+                <h2 class="font-bold text-lg text-blue-300">${match.name}</h2>
+                <p class="text-sm text-gray-300">${match.category || "Unknown"} • ${match.language || "Unknown"}</p>
+              `;
+              matchContainer.appendChild(a);
+            }
+          });
+        }
+
+        categoryFilter.addEventListener("change", renderMatches);
+        languageFilter.addEventListener("change", renderMatches);
+
+        renderMatches();
+      } catch (e) {
+        document.getElementById("matches").innerHTML =
+          "<p class='text-red-400'>⚠️ Could not fetch match list. Try again later.</p>";
       }
-
-      categoryFilter.addEventListener("change", renderMatches);
-      languageFilter.addEventListener("change", renderMatches);
-
-      renderMatches();
     }
 
     loadMatches();
