@@ -6,7 +6,6 @@
   <title>FanCode Live (JW Player)</title>
 
   <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
-
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -64,7 +63,8 @@
     const urlParams = new URLSearchParams(window.location.search);
     const matchId = urlParams.get("id");
 
-    const apiUrl = "https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.json";
+    // Base API URL
+    const baseApiUrl = "https://cdn.jsdelivr.net/gh/jitendra-unatti/fancode@main/data/fancode.json";
 
     let currentMatch = null;
     let player = null;
@@ -76,6 +76,9 @@
 
     async function loadMatch() {
       try {
+        // Always use fresh API URL with timestamp
+        const apiUrl = baseApiUrl + "?v=" + Date.now();
+
         const res = await fetch(apiUrl);
         if (!res.ok) {
           throw new Error(`Failed to fetch data: ${res.status}`);
@@ -107,19 +110,19 @@
           document.getElementById("matchTitle").textContent = "No stream found for this match.";
           return;
         }
-        
+
         currentVideoUrl = startUrl;
 
-        // JW Player setup with explicit type for HLS
+        // JW Player setup
         player = jwplayer("videoPlayer").setup({
           file: startUrl,
-          type: "hls", // Explicitly set the type to hls
+          type: "hls",
           aspectratio: "16:9",
           autostart: true,
           stretching: "uniform",
           width: "100%"
         });
-        
+
         highlightActiveButton(startSource);
         updateUrlInput(startUrl);
 
@@ -166,7 +169,11 @@
       }
     });
 
+    // Run on load
     loadMatch();
+
+    // Optional: auto-refresh match data every 60s
+    setInterval(loadMatch, 60000);
   </script>
 </body>
 </html>
