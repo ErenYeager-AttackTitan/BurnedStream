@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch Match</title>
+  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white flex flex-col min-h-screen">
+  <header class="p-4 bg-red-600 text-center text-xl font-bold">FanCode Live Stream</header>
+  
+  <main class="flex-1 p-4">
+    <div id="matchInfo" class="mb-4 text-center"></div>
+    <div id="player" class="aspect-video"></div>
+  </main>
+
+  <script>
+    function getQueryParam(param) {
+      return new URLSearchParams(window.location.search).get(param);
+    }
+
+    async function loadMatch() {
+      const id = getQueryParam("id");
+      if (!id) return;
+
+      const res = await fetch("https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json");
+      const data = await res.json();
+      const match = data.matches.find(m => m.match_id == id);
+
+      if (!match) {
+        document.getElementById("matchInfo").innerHTML = "<p class='text-red-500'>Match not found!</p>";
+        return;
+      }
+
+      document.getElementById("matchInfo").innerHTML = `
+        <h2 class="text-2xl font-bold">${match.match_name}</h2>
+        <p class="text-gray-400">${match.event_name} • ${match.status}</p>
+      `;
+
+      let streamUrl = match.dai_url || match.adfree_url;
+      if (!streamUrl) {
+        document.getElementById("player").innerHTML = "<p class='text-red-500 text-center mt-4'>No stream available.</p>";
+        return;
+      }
+
+      jwplayer("player").setup({
+        file: streamUrl,
+        image: match.src,
+        width: "100%",
+        aspectratio: "16:9",
+        autostart: true,
+        controls: true,
+        skin: { name: "seven" }
+      });
+    }
+
+    loadMatch();
+  </script>
+</body>
+</html>
