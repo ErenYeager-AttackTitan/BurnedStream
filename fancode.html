@@ -4,129 +4,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FanCode Live Matches</title>
-
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- JWPlayer -->
-  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
-
-  <style>
-    body {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: white;
-      font-family: 'Inter', sans-serif;
-    }
-    .card-custom {
-      transition: transform .2s;
-      border-radius: 1rem;
-      overflow: hidden;
-    }
-    .card-custom:hover {
-      transform: scale(1.04);
-      box-shadow: 0 0 20px rgba(255,255,255,0.15);
-    }
-    .badge-live { background: #ef4444; }
-    .badge-upcoming { background: #3b82f6; }
-  </style>
 </head>
-<body>
-  <div class="container py-4">
-    <h1 class="text-center text-3xl font-bold mb-4">📺 FanCode Live Matches</h1>
-    <p class="text-center mb-5 text-gray-300">Auto-updated sports matches (Live + Upcoming)</p>
+<body class="bg-gray-950 text-white">
+  <header class="p-4 bg-red-600 text-center text-2xl font-bold">FanCode Live Matches</header>
+  
+  <main class="p-4">
+    <h2 class="text-xl font-semibold mb-2">Live Matches</h2>
+    <div id="liveMatches" class="grid md:grid-cols-3 gap-4"></div>
 
-    <!-- Filter -->
-    <div class="text-center mb-4">
-      <button class="btn btn-sm btn-outline-light m-1 filter-btn" data-filter="All">All</button>
-      <button class="btn btn-sm btn-outline-light m-1 filter-btn" data-filter="Cricket">Cricket</button>
-      <button class="btn btn-sm btn-outline-light m-1 filter-btn" data-filter="Football">Football</button>
-      <button class="btn btn-sm btn-outline-light m-1 filter-btn" data-filter="Baseball">Baseball</button>
-      <button class="btn btn-sm btn-outline-light m-1 filter-btn" data-filter="Golf">Golf</button>
-    </div>
-
-    <!-- Matches -->
-    <div class="row" id="matches"></div>
-  </div>
-
-  <!-- JWPlayer Modal -->
-  <div class="modal fade" id="playerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content bg-gray-900 text-white">
-        <div class="modal-header">
-          <h5 class="modal-title" id="matchTitle">Now Playing</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="jwplayerDiv">Loading player...</div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <h2 class="text-xl font-semibold mt-6 mb-2">Upcoming Matches</h2>
+    <div id="upcomingMatches" class="grid md:grid-cols-3 gap-4"></div>
+  </main>
 
   <script>
-    const apiURL = "https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json";
-
     async function loadMatches() {
-      const res = await fetch(apiURL);
+      const res = await fetch("https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json");
       const data = await res.json();
-      const container = document.getElementById("matches");
-      container.innerHTML = "";
+
+      const liveContainer = document.getElementById("liveMatches");
+      const upcomingContainer = document.getElementById("upcomingMatches");
 
       data.matches.forEach(match => {
-        const badge = match.status === "LIVE"
-          ? `<span class="badge badge-live px-2 py-1 rounded">LIVE</span>`
-          : `<span class="badge badge-upcoming px-2 py-1 rounded">UPCOMING</span>`;
-
-        const btn = match.dai_url || match.adfree_url
-          ? `<button class="btn btn-sm btn-warning mt-2" onclick="playMatch('${match.match_name}', '${match.dai_url || match.adfree_url}')">▶ Watch</button>`
-          : "";
-
-        container.innerHTML += `
-          <div class="col-md-4 col-lg-3 mb-4 match-card" data-category="${match.event_category}">
-            <div class="card card-custom bg-gray-800 text-white h-100">
-              <img src="${match.src}" class="card-img-top" alt="${match.match_name}">
-              <div class="card-body">
-                <h5 class="card-title">${match.match_name}</h5>
-                <p class="text-sm text-gray-300">${match.event_name}</p>
-                ${badge}
-                <p class="mt-2"><strong>${match.team_1}</strong> vs <strong>${match.team_2}</strong></p>
-                <p class="text-xs text-gray-400">⏰ ${match.startTime}</p>
-                ${btn}
-              </div>
-            </div>
-          </div>
+        const card = document.createElement("a");
+        card.href = `fan-w.html?id=${match.match_id}`;
+        card.className = "bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition";
+        card.innerHTML = `
+          <img src="${match.src}" alt="${match.title}" class="w-full h-40 object-cover rounded-lg mb-2">
+          <h3 class="font-bold text-lg">${match.title}</h3>
+          <p class="text-sm text-gray-400">${match.event_name}</p>
+          <p class="mt-1"><span class="px-2 py-1 rounded text-xs ${match.status === "LIVE" ? "bg-red-500" : "bg-yellow-500"}">${match.status}</span></p>
         `;
+
+        if (match.status === "LIVE") {
+          liveContainer.appendChild(card);
+        } else {
+          upcomingContainer.appendChild(card);
+        }
       });
     }
-
-    function playMatch(title, url) {
-      document.getElementById("matchTitle").innerText = title;
-      jwplayer("jwplayerDiv").setup({
-        file: url,
-        width: "100%",
-        aspectratio: "16:9",
-        autostart: true
-      });
-      new bootstrap.Modal(document.getElementById("playerModal")).show();
-    }
-
-    // Filter
-    document.addEventListener("click", e => {
-      if (e.target.classList.contains("filter-btn")) {
-        const filter = e.target.dataset.filter;
-        document.querySelectorAll(".match-card").forEach(card => {
-          card.style.display = filter === "All" || card.dataset.category === filter ? "block" : "none";
-        });
-      }
-    });
 
     loadMatches();
   </script>
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
