@@ -26,6 +26,15 @@
     .switch-btn.active {
       @apply ring-2 ring-blue-500 transform scale-105;
     }
+    .url-input-container {
+      @apply flex items-center justify-center p-2 rounded-lg bg-gray-800 border border-gray-700 w-full max-w-lg;
+    }
+    .url-input {
+      @apply bg-transparent text-sm w-full outline-none truncate;
+    }
+    .copy-btn {
+      @apply ml-2 p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors;
+    }
   </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4 md:p-8">
@@ -50,6 +59,15 @@
     </button>
   </div>
 
+  <div class="mt-8 url-input-container">
+    <input type="text" id="currentUrlInput" class="url-input" readonly placeholder="Current Stream URL">
+    <button id="copyUrlBtn" class="copy-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M8 2a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2H8zM6 4a4 4 0 014-4h4a4 4 0 014 4v2a4 4 0 01-4 4h-4a4 4 0 01-4-4V4zM4 14a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2v-2a2 2 0 00-2-2H4z" />
+      </svg>
+    </button>
+  </div>
+
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const matchId = urlParams.get("id");
@@ -62,6 +80,7 @@
     let cloudfrontUrl = "";
     let adfreeUrl = "";
     let daiUrl = "";
+    let currentVideoUrl = "";
 
     async function loadMatch() {
       try {
@@ -96,6 +115,8 @@
           document.getElementById("matchTitle").textContent = "No stream found for this match.";
           return;
         }
+        
+        currentVideoUrl = startUrl;
 
         player = videojs("videoPlayer", {
           controls: true,
@@ -106,6 +127,7 @@
         });
         
         highlightActiveButton(startSource);
+        updateUrlInput(startUrl);
 
       } catch (err) {
         console.error("Error loading match:", err);
@@ -122,18 +144,35 @@
       }
     }
 
+    function updateUrlInput(url) {
+      const urlInput = document.getElementById('currentUrlInput');
+      urlInput.value = url;
+    }
+
     function switchSource(url, source) {
       if (!url || !player) return;
+      currentVideoUrl = url;
       player.src({ src: url, type: "application/x-mpegURL" });
       player.play();
       highlightActiveButton(source);
+      updateUrlInput(url);
     }
 
     document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl, "cloudfront"));
     document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl, "adfree"));
     document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl, "dai"));
 
+    document.getElementById("copyUrlBtn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(currentVideoUrl);
+        alert("URL copied to clipboard!");
+      } catch (err) {
+        console.error("Failed to copy URL:", err);
+        alert("Failed to copy URL. Please copy it manually.");
+      }
+    });
+
     loadMatch();
   </script>
 </body>
-  </html>
+</html>
