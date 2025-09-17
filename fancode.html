@@ -31,7 +31,8 @@
   <div id="matches" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
 
   <script>
-    const apiUrl = "https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json";
+    const apiUrl = "https://goodproxy.eren-yeager-founding-titan-9.workers.dev/fetch?url=" +
+                   encodeURIComponent("https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.json");
 
     async function loadMatches() {
       try {
@@ -72,9 +73,6 @@
               let a = document.createElement("a");
               a.href = `fan-w.html?id=${encodeURIComponent(match.id)}`;
               a.className = "card block shadow-lg";
-              a.setAttribute("data-category", match.category);
-              a.setAttribute("data-language", match.language);
-
               a.innerHTML = `
                 <img src="${match.image || 'https://via.placeholder.com/400x250/1e3a8a/ffffff?text=No+Image'}" 
                      alt="${match.name}" 
