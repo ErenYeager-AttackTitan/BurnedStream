@@ -39,11 +39,11 @@
       `;
 
       const sources = [];
-      if (match.dai_url) {
-        sources.push({ file: match.dai_url, label: "Main (DAI)" });
+      if (match.dai_stream) {
+        sources.push({ file: match.dai_stream, label: "Main (DAI)" });
       }
-      if (match.adfree_url) {
-        sources.push({ file: match.adfree_url, label: "Fallback (Ad-Free)" });
+      if (match.adfree_stream) {
+        sources.push({ file: match.adfree_stream, label: "Fallback (Ad-Free)" });
       }
 
       if (sources.length === 0) {
