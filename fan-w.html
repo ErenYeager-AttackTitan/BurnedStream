@@ -4,11 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FanCode Live</title>
-  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
+
+  <!-- Video.js -->
+  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
     body { background:#0d1117; color:white; font-family:Inter, sans-serif; }
-    .jwplayer { border-radius:12px; overflow:hidden; }
+    .video-js { border-radius:12px; overflow:hidden; }
+    .vjs-theme-blue .vjs-control-bar {
+      background: rgba(0, 122, 255, 0.9);
+    }
     .switch-btn {
       @apply px-4 py-2 rounded-lg font-semibold shadow-md;
     }
@@ -20,7 +29,7 @@
   <h1 id="matchTitle" class="text-2xl font-bold text-blue-400 mb-4 text-center">Loading...</h1>
 
   <!-- Player -->
-  <div id="player" class="w-full max-w-3xl aspect-video rounded-2xl overflow-hidden shadow-lg"></div>
+  <video id="videoPlayer" class="video-js vjs-theme-blue w-full max-w-3xl rounded-2xl shadow-lg" controls preload="auto" playsinline></video>
 
   <!-- Controls -->
   <div class="mt-4 flex gap-3 flex-wrap justify-center">
@@ -37,7 +46,7 @@
       encodeURIComponent("https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.json");
 
     let currentMatch = null;
-    let playerInstance = null;
+    let player = null;
 
     let cloudfrontUrl = "";
     let adfreeUrl = "";
@@ -56,7 +65,7 @@
 
         document.getElementById("matchTitle").textContent = currentMatch.name;
 
-        // Assign URLs
+        // Set main + fallbacks
         cloudfrontUrl = currentMatch.cloudfront_cdn || "";
         adfreeUrl = currentMatch.adfree_url || "";
 
@@ -64,42 +73,32 @@
         if (adfreeUrl) {
           try {
             const urlObj = new URL(adfreeUrl);
-            const pathPart = urlObj.pathname; 
+            const pathPart = urlObj.pathname;
             daiUrl = "https://dai.fancode.com/primary" + pathPart;
           } catch (e) {
             console.error("DAI URL build failed:", e);
           }
         }
 
-        // Init JWPlayer with CloudFront by default
-        if (cloudfrontUrl) {
-          setupPlayer(cloudfrontUrl);
-        } else if (adfreeUrl) {
-          setupPlayer(adfreeUrl);
-        } else {
-          document.getElementById("matchTitle").textContent = "No stream available!";
-        }
+        // Init Video.js with main (cloudfront or fallback)
+        let startUrl = cloudfrontUrl || adfreeUrl || daiUrl;
+        player = videojs("videoPlayer", {
+          controls: true,
+          autoplay: true,
+          preload: "auto",
+          fluid: true,
+          sources: [{ src: startUrl, type: "application/x-mpegURL" }]
+        });
 
       } catch (err) {
         console.error("Error loading match:", err);
       }
     }
 
-    function setupPlayer(url) {
-      playerInstance = jwplayer("player").setup({
-        file: url,
-        image: currentMatch.image || "",
-        width: "100%",
-        aspectratio: "16:9",
-        autostart: true,
-        skin: { name: "seven" }
-      });
-    }
-
     function switchSource(url) {
-      if (!url || !playerInstance) return;
-      playerInstance.load([{ file: url }]);
-      playerInstance.play();
+      if (!url || !player) return;
+      player.src({ src: url, type: "application/x-mpegURL" });
+      player.play();
     }
 
     document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl));
