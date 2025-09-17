@@ -38,18 +38,30 @@
         <p class="text-gray-400">${match.event_name} • ${match.status}</p>
       `;
 
-      let streamUrl = match.dai_url || match.adfree_url;
-      if (!streamUrl) {
+      const sources = [];
+      if (match.dai_url) {
+        sources.push({ file: match.dai_url, label: "Main (DAI)" });
+      }
+      if (match.adfree_url) {
+        sources.push({ file: match.adfree_url, label: "Fallback (Ad-Free)" });
+      }
+
+      if (sources.length === 0) {
         document.getElementById("player").innerHTML = "<p class='text-red-500 text-center mt-4'>No stream available.</p>";
         return;
       }
 
       jwplayer("player").setup({
-        file: streamUrl,
-        image: match.src,
+        playlist: [
+          {
+            title: match.match_name,
+            image: match.src,
+            sources: sources
+          }
+        ],
+        autostart: false,
         width: "100%",
         aspectratio: "16:9",
-        autostart: true,
         controls: true,
         skin: { name: "seven" }
       });
