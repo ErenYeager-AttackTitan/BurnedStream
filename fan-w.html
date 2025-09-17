@@ -1,179 +1,440 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FanCode Live (JW Player)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Match</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <style>
+        :root {
+            --background-color: #101010;
+            --surface-color: #1d1d1d;
+            --primary-text-color: #f1f1f1;
+            --secondary-text-color: #aaa;
+            --accent-color: #9146ff;
+            --live-color: #e91916;
+        }
 
-  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(233, 25, 22, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(233, 25, 22, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(233, 25, 22, 0); }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -468px 0; }
+            100% { background-position: 468px 0; }
+        }
 
-  <style>
-    body { background: #0c0e12; color: #e2e8f0; font-family: Inter, sans-serif; }
-    .jwplayer { border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-    .switch-btn {
-      @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
-    }
-    .switch-btn.active {
-      @apply ring-2 ring-blue-500 transform scale-105;
-    }
-    .url-input-container {
-      @apply flex items-center justify-center p-2 rounded-lg bg-gray-800 border border-gray-700 w-full max-w-lg;
-    }
-    .url-input {
-      @apply bg-transparent text-sm w-full outline-none truncate;
-    }
-    .copy-btn {
-      @apply ml-2 p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors;
-    }
-  </style>
+        body {
+            background-color: var(--background-color);
+            color: var(--primary-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        /* --- Skeleton Loader --- */
+        .skeleton {
+            animation: shimmer 1.5s infinite linear;
+            background: linear-gradient(to right, #2d2d2d 8%, #3a3a3a 18%, #2d2d2d 33%);
+            background-size: 1000px 104px;
+            border-radius: 6px;
+        }
+        .skeleton-title { height: 40px; width: 60%; margin: 0 auto 1rem; }
+        .skeleton-text { height: 20px; width: 40%; margin: 0 auto 2rem; }
+        .skeleton-video { width: 100%; padding-top: 56.25%; /* 16:9 Aspect Ratio */ margin-bottom: 1rem; }
+        .skeleton-bar { height: 45px; width: 80%; margin: 1rem auto; }
+        
+        /* --- Main Content (Hidden until loaded) --- */
+        .main-content {
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Header */
+        #match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            text-align: center;
+        }
+        #match-info { flex: 1; text-align: left; }
+        #match-title {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            margin: 0;
+            font-weight: 700;
+        }
+        #tournament-name {
+            color: var(--secondary-text-color);
+            margin: 0.25rem 0 0;
+            font-size: clamp(1rem, 2vw, 1.2rem);
+        }
+        #live-clock {
+            font-family: 'Courier New', Courier, monospace;
+            background: var(--surface-color);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Scoreboard */
+        #scoreboard-container {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .scoreboard-team {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+            min-width: 150px;
+        }
+        .scoreboard-team img { width: 35px; height: 35px; object-fit: contain; }
+        .scoreboard-team .name { font-weight: 600; font-size: 1.1rem; }
+        .scoreboard-team .score { font-size: 1.5rem; font-weight: 700; margin-left: auto; }
+        .score-cricket .overs { font-size: 0.9rem; color: var(--secondary-text-color); margin-left: 0.5rem; }
+        #match-status {
+            color: var(--live-color);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #match-status .live-dot {
+            width: 10px;
+            height: 10px;
+            background-color: var(--live-color);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* Video */
+        #video-container {
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+        #video-player { width: 100%; display: block; border: none; }
+
+        /* Controls */
+        #video-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .control-btn {
+            background-color: var(--surface-color);
+            border: none;
+            color: var(--primary-text-color);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease;
+        }
+        .control-btn:hover { background-color: #2c2c2c; }
+        #language-switcher { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .lang-btn {
+            background-color: var(--surface-color);
+            border: 2px solid var(--surface-color);
+            color: var(--secondary-text-color);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            text-transform: uppercase;
+        }
+        .lang-btn.active, .lang-btn:hover {
+            color: var(--primary-text-color);
+            border-color: var(--accent-color);
+        }
+
+        #message-container {
+            padding: 40px 20px;
+            font-size: 1.2em;
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
 </head>
-<body class="flex flex-col items-center min-h-screen p-4 md:p-8">
+<body>
 
-  <h1 id="matchTitle" class="text-3xl font-bold text-blue-400 mb-6 text-center tracking-wide">
-    Loading...
-  </h1>
+    <div class="container">
+        <div id="skeleton-loader">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-video"></div>
+            <div class="skeleton skeleton-bar"></div>
+            <div class="skeleton skeleton-bar"></div>
+        </div>
+        
+        <div class="main-content" id="main-content">
+            <header id="match-header">
+                <div id="match-info">
+                    <h1 id="match-title"></h1>
+                    <p id="tournament-name"></p>
+                </div>
+                <div id="live-clock"></div>
+            </header>
+            
+            <div id="scoreboard-container"></div>
+            
+            <div id="video-container">
+                <video id="video-player" controls autoplay muted playsinline></video>
+            </div>
 
-  <div class="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl">
-    <div id="videoPlayer" class="jwplayer w-full"></div>
-  </div>
+            <div id="video-controls">
+                 <button id="pip-button" class="control-btn" title="Picture-in-Picture">PiP Mode</button>
+                 <div id="language-switcher"></div>
+            </div>
+        </div>
+        
+        <div id="message-container" style="display: none;"></div>
+    </div>
 
-  <div class="mt-8 flex gap-4 flex-wrap justify-center">
-    <button id="cloudfrontBtn" class="switch-btn bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-      Main (CloudFront)
-    </button>
-    <button id="adfreeBtn" class="switch-btn bg-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
-      Fallback (Ad-Free)
-    </button>
-    <button id="daiBtn" class="switch-btn bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
-      Fallback (DAI)
-    </button>
-  </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_URL = 'https://crew-auth.vercel.app/api/match';
+            let allMatchesData = [];
+            let hlsInstance = null;
+            let currentMatchId = null;
+            let dataUpdateInterval = null;
 
-  <div class="mt-8 url-input-container">
-    <input type="text" id="currentUrlInput" class="url-input" readonly placeholder="Current Stream URL">
-    <button id="copyUrlBtn" class="copy-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M8 2a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2H8zM6 4a4 4 0 014-4h4a4 4 0 014 4v2a4 4 0 01-4 4h-4a4 4 0 01-4-4V4zM4 14a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2v-2a2 2 0 00-2-2H4z" />
-      </svg>
-    </button>
-  </div>
+            // DOM Elements
+            const mainContent = document.getElementById('main-content');
+            const skeletonLoader = document.getElementById('skeleton-loader');
+            const messageContainer = document.getElementById('message-container');
+            const videoPlayer = document.getElementById('video-player');
+            const matchTitleElem = document.getElementById('match-title');
+            const tournamentNameElem = document.getElementById('tournament-name');
+            const liveClockElem = document.getElementById('live-clock');
+            const scoreboardContainer = document.getElementById('scoreboard-container');
+            const languageSwitcher = document.getElementById('language-switcher');
+            const pipButton = document.getElementById('pip-button');
 
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const matchId = urlParams.get("id");
+            const showMessage = (msg) => {
+                skeletonLoader.style.display = 'none';
+                mainContent.style.display = 'none';
+                messageContainer.textContent = msg;
+                messageContainer.style.display = 'block';
+                clearInterval(dataUpdateInterval);
+            };
+            
+            const startLiveClock = () => {
+                const updateClock = () => {
+                    const now = new Date();
+                    const options = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+                    liveClockElem.textContent = now.toLocaleTimeString('en-US', options) + ' IST';
+                };
+                updateClock();
+                setInterval(updateClock, 1000);
+            };
 
-    // Base API URL
-    const baseApiUrl = "https://crew-auth.vercel.app/api/match";
+            const getStreamUrl = (match) => {
+                const cdn = match?.STREAMING_CDN;
+                if (cdn?.cloudfront_cdn && cdn.cloudfront_cdn !== "Unavailable") return cdn.cloudfront_cdn;
+                if (match?.dai_stream && match.dai_stream !== "Unavailable") return match.dai_stream;
+                return match?.adfree_stream || null;
+            };
+            
+            const updateScoreboard = (match) => {
+                if (!match) return;
 
-    let currentMatch = null;
-    let player = null;
+                const statusHTML = `<div id="match-status"><div class="live-dot"></div>${match.status.replace("_", " ")}</div>`;
+                let teamsHTML = '';
 
-    let cloudfrontUrl = "";
-    let adfreeUrl = "";
-    let daiUrl = "";
-    let currentVideoUrl = "";
+                if (match.category === 'Cricket') {
+                    const [team1, team2] = match.teams;
+                    const team1Score = team1.cricketScore?.[0] ? `${team1.cricketScore[0].runs}/${team1.cricketScore[0].wickets}` : '0/0';
+                    const team1Overs = team1.cricketScore?.[0] ? `(${team1.cricketScore[0].overs})` : '';
+                    const team2Score = team2.cricketScore?.[0] ? `${team2.cricketScore[0].runs}/${team2.cricketScore[0].wickets}` : '0/0';
+                    const team2Overs = team2.cricketScore?.[0] ? `(${team2.cricketScore[0].overs})` : '';
+                    
+                    teamsHTML = `
+                        <div class="scoreboard-team">
+                            <img src="${team1.flag.src}" alt="${team1.name}">
+                            <span class="name">${team1.shortName}</span>
+                            <span class="score score-cricket">${team1Score} <span class="overs">${team1Overs}</span></span>
+                        </div>
+                        ${statusHTML}
+                        <div class="scoreboard-team">
+                             <span class="score score-cricket">${team2Score} <span class="overs">${team2Overs}</span></span>
+                             <span class="name">${team2.shortName}</span>
+                             <img src="${team2.flag.src}" alt="${team2.name}">
+                        </div>`;
+                } else if (match.category === 'Football') {
+                     const [team1, team2] = match.teams;
+                     const team1Score = team1.footballScore?.points ?? 0;
+                     const team2Score = team2.footballScore?.points ?? 0;
+                     teamsHTML = `
+                        <div class="scoreboard-team">
+                            <img src="${team1.flag.src}" alt="${team1.name}">
+                            <span class="name">${team1.name}</span>
+                            <span class="score">${team1Score}</span>
+                        </div>
+                        ${statusHTML}
+                        <div class="scoreboard-team">
+                             <span class="score">${team2Score}</span>
+                             <span class="name">${team2.name}</span>
+                             <img src="${team2.flag.src}" alt="${team2.name}">
+                        </div>`;
+                }
+                scoreboardContainer.innerHTML = teamsHTML;
+            };
 
-    async function loadMatch() {
-      try {
-        // Always use fresh API URL with timestamp
-        const apiUrl = baseApiUrl + "?v=" + Date.now();
+            const updateMatchDetails = (match) => {
+                matchTitleElem.textContent = match.title;
+                document.title = `${match.title} | Watch Live`;
+                tournamentNameElem.textContent = match.tournament;
+                updateScoreboard(match);
+            };
+            
+            const setupVideoPlayer = (url) => {
+                if (hlsInstance) hlsInstance.destroy();
+                if (Hls.isSupported()) {
+                    hlsInstance = new Hls();
+                    hlsInstance.loadSource(url);
+                    hlsInstance.attachMedia(videoPlayer);
+                    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                        if (data.fatal) {
+                           console.error('HLS Error:', data);
+                           showMessage('This stream could not be loaded. It may be offline or protected.');
+                        }
+                    });
+                } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoPlayer.src = url;
+                } else {
+                    showMessage('Your browser does not support HLS streaming.');
+                }
+            };
 
-        const res = await fetch(apiUrl);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch data: ${res.status}`);
-        }
-        const data = await res.json();
+            const switchStream = (matchId) => {
+                const newMatch = allMatchesData.find(m => m.match_id == parseInt(matchId));
+                if (newMatch) {
+                    currentMatchId = newMatch.match_id;
+                    const streamUrl = getStreamUrl(newMatch);
+                    if (streamUrl) {
+                        setupVideoPlayer(streamUrl);
+                        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.matchId == matchId));
+                        history.replaceState(null, '', `?id=${matchId}`);
+                    } else {
+                        showMessage('Stream not available for the selected language.');
+                    }
+                }
+            };
+            
+            const createLanguageSwitcher = (variants, activeMatchId) => {
+                if (variants.length <= 1) {
+                    languageSwitcher.innerHTML = '';
+                    return;
+                }
+                languageSwitcher.innerHTML = variants.map(match => `
+                    <button class="lang-btn ${match.match_id == activeMatchId ? 'active' : ''}" data-match-id="${match.match_id}">${match.language}</button>
+                `).join('');
+                languageSwitcher.querySelectorAll('.lang-btn').forEach(button => {
+                    button.addEventListener('click', e => switchStream(e.target.dataset.matchId));
+                });
+            };
+            
+            const periodicDataUpdate = async () => {
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    allMatchesData = data.matches;
+                    const currentMatch = allMatchesData.find(m => m.match_id === currentMatchId);
+                    if (currentMatch) updateScoreboard(currentMatch);
+                } catch (error) {
+                    console.warn("Failed to perform periodic data update:", error);
+                }
+            };
 
-        currentMatch = data.find(m => m.id == matchId);
-        if (!currentMatch) {
-          document.getElementById("matchTitle").textContent = "Match not found!";
-          return;
-        }
+            const initialize = async () => {
+                const params = new URLSearchParams(window.location.search);
+                currentMatchId = parseInt(params.get('id'));
 
-        document.getElementById("matchTitle").textContent = currentMatch.name;
+                if (!currentMatchId) {
+                    showMessage('No Match ID found. Please add `?id={match_id}` to the URL.');
+                    return;
+                }
 
-        // Set main and fallbacks
-        cloudfrontUrl = currentMatch.cloudfront_cdn || "";
-        adfreeUrl = currentMatch.adfree_url || "";
-        daiUrl = adfreeUrl ? "https://dai.fancode.com/primary" + new URL(adfreeUrl).pathname : "";
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) throw new Error(`API failed: ${response.status}`);
+                    
+                    const data = await response.json();
+                    allMatchesData = data.matches;
+                    
+                    const currentMatch = allMatchesData.find(m => m.match_id === currentMatchId);
+                    if (!currentMatch) {
+                        showMessage(`Could not find a match with ID: ${currentMatchId}`);
+                        return;
+                    }
 
-        // Determine the starting URL and disable buttons for missing URLs
-        const startUrl = cloudfrontUrl || adfreeUrl || daiUrl;
-        const startSource = cloudfrontUrl ? "cloudfront" : (adfreeUrl ? "adfree" : "dai");
+                    // Populate UI
+                    updateMatchDetails(currentMatch);
+                    const streamUrl = getStreamUrl(currentMatch);
+                    if (streamUrl) {
+                        setupVideoPlayer(streamUrl);
+                        const languageVariants = allMatchesData.filter(m => m.title === currentMatch.title);
+                        createLanguageSwitcher(languageVariants, currentMatch.match_id);
+                    } else {
+                        showMessage('No stream is available for this match.');
+                    }
 
-        if (!cloudfrontUrl) document.getElementById("cloudfrontBtn").disabled = true;
-        if (!adfreeUrl) document.getElementById("adfreeBtn").disabled = true;
-        if (!daiUrl) document.getElementById("daiBtn").disabled = true;
+                    // Start live updates
+                    startLiveClock();
+                    dataUpdateInterval = setInterval(periodicDataUpdate, 30000); // Refresh every 30s
+                    
+                    // Show content
+                    skeletonLoader.style.display = 'none';
+                    mainContent.style.display = 'flex';
 
-        if (!startUrl) {
-          document.getElementById("matchTitle").textContent = "No stream found for this match.";
-          return;
-        }
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    showMessage('Could not load match data. Please check your connection.');
+                }
+            };
 
-        currentVideoUrl = startUrl;
+            // PiP Button Logic
+            if (document.pictureInPictureEnabled) {
+                pipButton.addEventListener('click', () => {
+                    videoPlayer.requestPictureInPicture().catch(err => console.error("PiP failed:", err));
+                });
+            } else {
+                pipButton.style.display = 'none';
+            }
 
-        // JW Player setup
-        player = jwplayer("videoPlayer").setup({
-          file: startUrl,
-          type: "hls",
-          aspectratio: "16:9",
-          autostart: true,
-          stretching: "uniform",
-          width: "100%"
+            initialize();
         });
-
-        highlightActiveButton(startSource);
-        updateUrlInput(startUrl);
-
-      } catch (err) {
-        console.error("Error loading match:", err);
-        document.getElementById("matchTitle").textContent = "Error loading match data. Please try again later.";
-      }
-    }
-
-    function highlightActiveButton(source) {
-      const buttons = document.querySelectorAll('.switch-btn');
-      buttons.forEach(btn => btn.classList.remove('active'));
-      const activeBtn = document.getElementById(source + 'Btn');
-      if (activeBtn) {
-        activeBtn.classList.add('active');
-      }
-    }
-
-    function updateUrlInput(url) {
-      const urlInput = document.getElementById('currentUrlInput');
-      urlInput.value = url;
-    }
-
-    function switchSource(url, source) {
-      if (!url || !player) return;
-      currentVideoUrl = url;
-      player.load([{ file: url, type: "hls" }]);
-      player.play();
-      highlightActiveButton(source);
-      updateUrlInput(url);
-    }
-
-    document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl, "cloudfront"));
-    document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl, "adfree"));
-    document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl, "dai"));
-
-    document.getElementById("copyUrlBtn").addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(currentVideoUrl);
-        alert("URL copied to clipboard!");
-      } catch (err) {
-        console.error("Failed to copy URL:", err);
-        alert("Failed to copy URL. Please copy it manually.");
-      }
-    });
-
-    // Run on load
-    loadMatch();
-
-    // Optional: auto-refresh match data every 60s
-    setInterval(loadMatch, 60000);
-  </script>
+    </script>
 </body>
 </html>
