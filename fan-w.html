@@ -1,90 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Watch Match - FanCode</title>
-<script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body { background: #0f172a; color: #f8fafc; font-family: sans-serif; }
-  .btn-toggle { transition: background 0.3s; }
-  .btn-toggle:hover { background: #2563eb; color: white; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FanCode Live</title>
+  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:#0d1117; color:white; font-family:Inter, sans-serif; }
+    .jwplayer { border-radius:12px; overflow:hidden; }
+    .switch-btn {
+      @apply px-4 py-2 rounded-lg font-semibold shadow-md;
+    }
+  </style>
 </head>
-<body class="flex flex-col items-center p-4">
+<body class="flex flex-col items-center min-h-screen p-4">
 
-<header class="text-center mb-4">
-  <h1 class="text-2xl font-bold text-blue-400">📺 FanCode Streaming</h1>
-</header>
+  <!-- Title -->
+  <h1 id="matchTitle" class="text-2xl font-bold text-blue-400 mb-4 text-center">Loading...</h1>
 
-<!-- JWPlayer Container -->
-<div id="jwplayer-container" class="w-full max-w-3xl"></div>
+  <!-- Player -->
+  <div id="player" class="w-full max-w-3xl aspect-video rounded-2xl overflow-hidden shadow-lg"></div>
 
-<h2 id="matchTitle" class="mt-4 text-center text-lg font-semibold"></h2>
-<div id="info" class="mt-2 text-center text-sm text-gray-400"></div>
+  <!-- Controls -->
+  <div class="mt-4 flex gap-3 flex-wrap justify-center">
+    <button id="cloudfrontBtn" class="switch-btn bg-blue-600 hover:bg-blue-700">Main (CloudFront)</button>
+    <button id="adfreeBtn" class="switch-btn bg-gray-600 hover:bg-gray-700">Fallback (Ad-Free)</button>
+    <button id="daiBtn" class="switch-btn bg-gray-800 hover:bg-gray-900">Fallback (DAI)</button>
+  </div>
 
-<!-- Stream Switch Buttons -->
-<div class="mt-4 flex gap-2">
-  <button id="btnDai" class="btn-toggle px-4 py-2 bg-gray-700 rounded font-semibold">DAI Stream</button>
-  <button id="btnAdfree" class="btn-toggle px-4 py-2 bg-gray-700 rounded font-semibold">AdFree Stream</button>
-</div>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const matchId = urlParams.get("id");
 
-<script>
-const API_URL = "https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json";
-const PROXY_URL = "https://mini.allinonereborn.online/sony/stream_proxy.php?url=";
-const urlParams = new URLSearchParams(window.location.search);
-const matchId = urlParams.get("id");
+    const apiUrl = "https://goodproxy.eren-yeager-founding-titan-9.workers.dev/fetch?url=" +
+      encodeURIComponent("https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.json");
 
-let jwPlayerInstance;
-let matchData;
+    let currentMatch = null;
+    let playerInstance = null;
 
-async function loadMatch() {
-  try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-    matchData = data.matches.find(m => m.match_id == matchId);
+    let cloudfrontUrl = "";
+    let adfreeUrl = "";
+    let daiUrl = "";
 
-    if(!matchData) {
-      document.body.innerHTML = "<p class='text-red-500 text-lg'>Match not found!</p>";
-      return;
+    async function loadMatch() {
+      try {
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+
+        currentMatch = data.find(m => m.id == matchId);
+        if (!currentMatch) {
+          document.getElementById("matchTitle").textContent = "Match not found!";
+          return;
+        }
+
+        document.getElementById("matchTitle").textContent = currentMatch.name;
+
+        // Assign URLs
+        cloudfrontUrl = currentMatch.cloudfront_cdn || "";
+        adfreeUrl = currentMatch.adfree_url || "";
+
+        // Build daiUrl from adfreeUrl
+        if (adfreeUrl) {
+          try {
+            const urlObj = new URL(adfreeUrl);
+            const pathPart = urlObj.pathname; 
+            daiUrl = "https://dai.fancode.com/primary" + pathPart;
+          } catch (e) {
+            console.error("DAI URL build failed:", e);
+          }
+        }
+
+        // Init JWPlayer with CloudFront by default
+        if (cloudfrontUrl) {
+          setupPlayer(cloudfrontUrl);
+        } else if (adfreeUrl) {
+          setupPlayer(adfreeUrl);
+        } else {
+          document.getElementById("matchTitle").textContent = "No stream available!";
+        }
+
+      } catch (err) {
+        console.error("Error loading match:", err);
+      }
     }
 
-    document.getElementById("matchTitle").innerText = matchData.title;
-    document.getElementById("info").innerHTML = `
-      ${matchData.team_1} 🆚 ${matchData.team_2} | ${matchData.event_name} | Status: 
-      <span class="${matchData.status==='LIVE'?'text-red-400':'text-blue-400'} font-semibold">${matchData.status}</span>
-    `;
+    function setupPlayer(url) {
+      playerInstance = jwplayer("player").setup({
+        file: url,
+        image: currentMatch.image || "",
+        width: "100%",
+        aspectratio: "16:9",
+        autostart: true,
+        skin: { name: "seven" }
+      });
+    }
 
-    const initialUrl = matchData.adfree_url || matchData.dai_url;
-    jwPlayerInstance = jwplayer("jwplayer-container");
-    jwPlayerInstance.setup({
-      file: PROXY_URL + encodeURIComponent(initialUrl),
-      width: "100%",
-      aspectratio: "16:9",
-      autostart: true,
-      controls: true,
-      primary: "html5",
-    });
-  } catch(e) {
-    console.error("Error loading match:", e);
-  }
-}
+    function switchSource(url) {
+      if (!url || !playerInstance) return;
+      playerInstance.load([{ file: url }]);
+      playerInstance.play();
+    }
 
-// Switch Streams via Proxy
-document.getElementById("btnDai").addEventListener("click", () => {
-  if(matchData?.dai_url) {
-    jwPlayerInstance.load([{ file: PROXY_URL + encodeURIComponent(matchData.dai_url) }]);
-  }
-});
+    document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl));
+    document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl));
+    document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl));
 
-document.getElementById("btnAdfree").addEventListener("click", () => {
-  if(matchData?.adfree_url) {
-    jwPlayerInstance.load([{ file: PROXY_URL + encodeURIComponent(matchData.adfree_url) }]);
-  }
-});
-
-loadMatch();
-</script>
+    loadMatch();
+  </script>
 </body>
 </html>
