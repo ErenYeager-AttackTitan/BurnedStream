@@ -3,23 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FanCode Live</title>
+  <title>FanCode Live (JW Player)</title>
 
-  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
-  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
 
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     body { background: #0c0e12; color: #e2e8f0; font-family: Inter, sans-serif; }
-    .video-js { border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-    .vjs-theme-blue .vjs-control-bar {
-      background: rgba(17, 24, 39, 0.8);
-      backdrop-filter: blur(5px);
-    }
-    .vjs-play-control, .vjs-mute-control {
-      color: #93c5fd;
-    }
+    .jwplayer { border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
     .switch-btn {
       @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
     }
@@ -44,7 +36,7 @@
   </h1>
 
   <div class="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl">
-    <video id="videoPlayer" class="video-js vjs-theme-blue w-full" controls preload="auto" playsinline></video>
+    <div id="videoPlayer" class="jwplayer w-full"></div>
   </div>
 
   <div class="mt-8 flex gap-4 flex-wrap justify-center">
@@ -118,12 +110,14 @@
         
         currentVideoUrl = startUrl;
 
-        player = videojs("videoPlayer", {
-          controls: true,
-          autoplay: true,
-          preload: "auto",
-          fluid: true,
-          sources: [{ src: startUrl, type: "application/x-mpegURL" }]
+        // JW Player setup with explicit type for HLS
+        player = jwplayer("videoPlayer").setup({
+          file: startUrl,
+          type: "hls", // Explicitly set the type to hls
+          aspectratio: "16:9",
+          autostart: true,
+          stretching: "uniform",
+          width: "100%"
         });
         
         highlightActiveButton(startSource);
@@ -152,7 +146,7 @@
     function switchSource(url, source) {
       if (!url || !player) return;
       currentVideoUrl = url;
-      player.src({ src: url, type: "application/x-mpegURL" });
+      player.load([{ file: url, type: "hls" }]);
       player.play();
       highlightActiveButton(source);
       updateUrlInput(url);
