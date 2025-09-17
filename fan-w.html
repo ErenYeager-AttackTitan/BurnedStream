@@ -5,45 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FanCode Live</title>
 
-  <!-- Video.js -->
   <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
   <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    body { background:#0d1117; color:white; font-family:Inter, sans-serif; }
-    .video-js { border-radius:12px; overflow:hidden; }
+    body { background: #0c0e12; color: #e2e8f0; font-family: Inter, sans-serif; }
+    .video-js { border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
     .vjs-theme-blue .vjs-control-bar {
-      background: rgba(0, 122, 255, 0.9);
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(5px);
+    }
+    .vjs-play-control, .vjs-mute-control {
+      color: #93c5fd;
     }
     .switch-btn {
-      @apply px-4 py-2 rounded-lg font-semibold shadow-md;
+      @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+    }
+    .switch-btn.active {
+      @apply ring-2 ring-blue-500 transform scale-105;
     }
   </style>
 </head>
-<body class="flex flex-col items-center min-h-screen p-4">
+<body class="flex flex-col items-center min-h-screen p-4 md:p-8">
 
-  <!-- Title -->
-  <h1 id="matchTitle" class="text-2xl font-bold text-blue-400 mb-4 text-center">Loading...</h1>
+  <h1 id="matchTitle" class="text-3xl font-bold text-blue-400 mb-6 text-center tracking-wide">
+    Loading...
+  </h1>
 
-  <!-- Player -->
-  <video id="videoPlayer" class="video-js vjs-theme-blue w-full max-w-3xl rounded-2xl shadow-lg" controls preload="auto" playsinline></video>
+  <div class="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl">
+    <video id="videoPlayer" class="video-js vjs-theme-blue w-full" controls preload="auto" playsinline></video>
+  </div>
 
-  <!-- Controls -->
-  <div class="mt-4 flex gap-3 flex-wrap justify-center">
-    <button id="cloudfrontBtn" class="switch-btn bg-blue-600 hover:bg-blue-700">Main (CloudFront)</button>
-    <button id="adfreeBtn" class="switch-btn bg-gray-600 hover:bg-gray-700">Fallback (Ad-Free)</button>
-    <button id="daiBtn" class="switch-btn bg-gray-800 hover:bg-gray-900">Fallback (DAI)</button>
+  <div class="mt-8 flex gap-4 flex-wrap justify-center">
+    <button id="cloudfrontBtn" class="switch-btn bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+      Main (CloudFront)
+    </button>
+    <button id="adfreeBtn" class="switch-btn bg-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+      Fallback (Ad-Free)
+    </button>
+    <button id="daiBtn" class="switch-btn bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+      Fallback (DAI)
+    </button>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const matchId = urlParams.get("id");
 
-    const apiUrl = "https://goodproxy.eren-yeager-founding-titan-9.workers.dev/fetch?url=" +
-      encodeURIComponent("https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.json");
+    const apiUrl = "https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.json";
 
     let currentMatch = null;
     let player = null;
@@ -55,6 +66,9 @@
     async function loadMatch() {
       try {
         const res = await fetch(apiUrl);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch data: ${res.status}`);
+        }
         const data = await res.json();
 
         currentMatch = data.find(m => m.id == matchId);
@@ -65,23 +79,24 @@
 
         document.getElementById("matchTitle").textContent = currentMatch.name;
 
-        // Set main + fallbacks
+        // Set main and fallbacks
         cloudfrontUrl = currentMatch.cloudfront_cdn || "";
         adfreeUrl = currentMatch.adfree_url || "";
+        daiUrl = adfreeUrl ? "https://dai.fancode.com/primary" + new URL(adfreeUrl).pathname : "";
 
-        // Build daiUrl from adfreeUrl
-        if (adfreeUrl) {
-          try {
-            const urlObj = new URL(adfreeUrl);
-            const pathPart = urlObj.pathname;
-            daiUrl = "https://dai.fancode.com/primary" + pathPart;
-          } catch (e) {
-            console.error("DAI URL build failed:", e);
-          }
+        // Determine the starting URL and disable buttons for missing URLs
+        const startUrl = cloudfrontUrl || adfreeUrl || daiUrl;
+        const startSource = cloudfrontUrl ? "cloudfront" : (adfreeUrl ? "adfree" : "dai");
+
+        if (!cloudfrontUrl) document.getElementById("cloudfrontBtn").disabled = true;
+        if (!adfreeUrl) document.getElementById("adfreeBtn").disabled = true;
+        if (!daiUrl) document.getElementById("daiBtn").disabled = true;
+
+        if (!startUrl) {
+          document.getElementById("matchTitle").textContent = "No stream found for this match.";
+          return;
         }
 
-        // Init Video.js with main (cloudfront or fallback)
-        let startUrl = cloudfrontUrl || adfreeUrl || daiUrl;
         player = videojs("videoPlayer", {
           controls: true,
           autoplay: true,
@@ -89,23 +104,36 @@
           fluid: true,
           sources: [{ src: startUrl, type: "application/x-mpegURL" }]
         });
+        
+        highlightActiveButton(startSource);
 
       } catch (err) {
         console.error("Error loading match:", err);
+        document.getElementById("matchTitle").textContent = "Error loading match data. Please try again later.";
       }
     }
 
-    function switchSource(url) {
+    function highlightActiveButton(source) {
+      const buttons = document.querySelectorAll('.switch-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(source + 'Btn');
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+      }
+    }
+
+    function switchSource(url, source) {
       if (!url || !player) return;
       player.src({ src: url, type: "application/x-mpegURL" });
       player.play();
+      highlightActiveButton(source);
     }
 
-    document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl));
-    document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl));
-    document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl));
+    document.getElementById("cloudfrontBtn").addEventListener("click", () => switchSource(cloudfrontUrl, "cloudfront"));
+    document.getElementById("adfreeBtn").addEventListener("click", () => switchSource(adfreeUrl, "adfree"));
+    document.getElementById("daiBtn").addEventListener("click", () => switchSource(daiUrl, "dai"));
 
     loadMatch();
   </script>
 </body>
-</html>
+  </html>
