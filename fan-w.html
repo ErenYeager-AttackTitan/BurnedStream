@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FanCode Live</title>
+  <title>FanCode Live (JW Player)</title>
 
-  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
-  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+  <!-- JW Player -->
+  <script src="https://cdn.jwplayer.com/libraries/aVr2lJgW.js"></script>
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     body { background: #0c0e12; color: #e2e8f0; font-family: Inter, sans-serif; }
-    .video-js { border: 1px solid #1f2937; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    #player { border: 1px solid #1f2937; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border-radius: 12px; }
     .switch-btn {
       @apply w-40 h-16 flex items-center justify-center bg-gray-800 text-lg font-bold rounded-xl shadow-lg transition-all duration-200;
     }
@@ -28,9 +30,7 @@
     Loading...
   </h1>
 
-  <div class="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl">
-    <video id="videoPlayer" class="video-js vjs-theme-blue w-full" controls preload="auto" playsinline></video>
-  </div>
+  <div id="player" class="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl"></div>
 
   <div class="mt-8 flex gap-6 flex-wrap justify-center">
     <button id="mainBtn" class="switch-btn">Main</button>
@@ -51,7 +51,7 @@
     const matchId = urlParams.get("id");
     const apiUrl = "https://raw.githubusercontent.com/jitendra-unatti/fancode/refs/heads/main/data/fancode.m3u";
 
-    let player = null;
+    let jwplayerInstance = null;
     let streamUrls = [];
     let currentUrl = "";
 
@@ -63,8 +63,8 @@
 
         // Parse M3U lines
         const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-
         let currentInfo = null;
+
         for (let line of lines) {
           if (line.startsWith("#EXTINF")) {
             const tvgIdMatch = line.match(/tvg-id="([^"]+)"/);
@@ -99,14 +99,16 @@
           return;
         }
 
-        // Initialize player
+        // Initialize JW Player
         currentUrl = mainUrl;
-        player = videojs("videoPlayer", {
+        jwplayerInstance = jwplayer("player").setup({
+          file: currentUrl,
+          type: "hls",
+          width: "100%",
+          aspectratio: "16:9",
+          autostart: true,
           controls: true,
-          autoplay: true,
-          preload: "auto",
-          fluid: true,
-          sources: [{ src: currentUrl, type: "application/x-mpegURL" }]
+          logo: match.logo ? { file: match.logo, position: "top-left" } : undefined
         });
 
         highlightButton("mainBtn");
@@ -116,7 +118,6 @@
         document.getElementById("mainBtn").onclick = () => switchSource(mainUrl, "mainBtn");
         document.getElementById("backupBtn").onclick = () => switchSource(backupUrl, "backupBtn");
 
-        // Disable backup button if not available
         if (!backupUrl) document.getElementById("backupBtn").disabled = true;
 
       } catch (err) {
@@ -135,10 +136,10 @@
     }
 
     function switchSource(url, btnId) {
-      if (!url || !player) return;
+      if (!url || !jwplayerInstance) return;
       currentUrl = url;
-      player.src({ src: url, type: "application/x-mpegURL" });
-      player.play();
+      jwplayerInstance.load([{ file: url, type: "hls" }]);
+      jwplayerInstance.play();
       highlightButton(btnId);
       updateUrlInput(url);
     }
@@ -155,4 +156,5 @@
     loadM3U();
   </script>
 </body>
-</html>
+  </html>
+  
