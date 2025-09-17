@@ -40,8 +40,15 @@
 
       const sources = [];
       if (match.adfree_url) {
-        sources.push({ file: match.adfree_url, label: "Main (DAI)" });
-      }
+  // Extract part after /mumbai/
+  const extracted = match.adfree_url.split("/mumbai/")[1];
+
+  // Construct DAI URL
+  const daiUrl = `https://dai.fancode.com/primary/${extracted}`;
+
+  sources.push({ file: daiUrl, label: "Main (DAI)" });
+}
+
       if (match.dai_url) {
         sources.push({ file: match.dai_url, label: "Fallback (Ad-Free)" });
       }
